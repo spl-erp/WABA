@@ -1,0 +1,208 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 16:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "conversation_key",
+  "waba_number",
+  "waba_account",
+  "status",
+  "column_break_cv1",
+  "match_state",
+  "assigned_to",
+  "unread_count",
+  "customer_section",
+  "customer_phone",
+  "customer_bsuid",
+  "profile_name",
+  "column_break_cv2",
+  "party_doctype",
+  "party",
+  "window_section",
+  "last_inbound_at",
+  "window_expires_at",
+  "column_break_cv3",
+  "last_message_at",
+  "last_message_preview"
+ ],
+ "fields": [
+  {
+   "fieldname": "conversation_key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1,
+   "description": "Business number and customer. One conversation per pair."
+  },
+  {
+   "fieldname": "waba_number",
+   "fieldtype": "Link",
+   "label": "Number",
+   "options": "Waba Number",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "waba_account",
+   "fieldtype": "Link",
+   "label": "WhatsApp Account",
+   "options": "Waba Account",
+   "read_only": 1,
+   "fetch_from": "waba_number.account"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Open\nDone",
+   "default": "Open",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_cv1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "match_state",
+   "fieldtype": "Select",
+   "label": "Matched?",
+   "options": "Matched\nTriage",
+   "default": "Triage",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Triage = the sender is not in the ERP yet."
+  },
+  {
+   "fieldname": "assigned_to",
+   "fieldtype": "Link",
+   "label": "Assigned To",
+   "options": "User",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "unread_count",
+   "fieldtype": "Int",
+   "label": "Unread",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "customer_phone",
+   "fieldtype": "Data",
+   "label": "Phone",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "customer_bsuid",
+   "fieldtype": "Data",
+   "label": "WhatsApp User ID (BSUID)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "profile_name",
+   "fieldtype": "Data",
+   "label": "WhatsApp Profile Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_cv2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "party_doctype",
+   "fieldtype": "Link",
+   "label": "Type",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Record",
+   "options": "party_doctype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "window_section",
+   "fieldtype": "Section Break",
+   "label": "24-hour window and latest message"
+  },
+  {
+   "fieldname": "last_inbound_at",
+   "fieldtype": "Datetime",
+   "label": "Customer Last Wrote",
+   "read_only": 1
+  },
+  {
+   "fieldname": "window_expires_at",
+   "fieldtype": "Datetime",
+   "label": "Window Closes",
+   "read_only": 1,
+   "description": "Inside it any message may be sent; after it only an approved template."
+  },
+  {
+   "fieldname": "column_break_cv3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_message_at",
+   "fieldtype": "Datetime",
+   "label": "Last Message At",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "last_message_preview",
+   "fieldtype": "Small Text",
+   "label": "Last Message",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 16:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Conversation",
+ "owner": "Administrator",
+ "sort_field": "last_message_at",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "WCONV-.#####",
+ "naming_rule": "Expression (old style)",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "title_field": "customer_phone"
+}

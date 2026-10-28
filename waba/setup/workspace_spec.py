@@ -23,6 +23,14 @@ SECTIONS = [
 		[("Waba Number", "Numbers", "Each business number, its agents and routing rules")],
 	),
 	(
+		"Conversations",
+		[
+			("Waba Conversation", "Conversations", "One thread per business number and customer"),
+			("Waba Message", "Messages", "Every message received, stored once"),
+			("Waba Identity", "WhatsApp User IDs", "Which person a WhatsApp user ID belongs to"),
+		],
+	),
+	(
 		"Activity",
 		[("Waba Webhook Event", "Webhook Events", "Every delivery Meta has sent to the ERP, kept as received")],
 	),
@@ -34,7 +42,11 @@ SHORTCUTS = [
 	("Waba Portfolio", "Portfolios"),
 	("Waba Meta App", "Meta Apps"),
 	("Waba Webhook Event", "Webhook Events"),
+	("Waba Conversation", "Conversations"),
 ]
+
+# (label, url): a saved filter on a list
+URL_SHORTCUTS = [("Triage", "/app/waba-conversation?match_state=Triage")]
 
 VIEWER_ROLES = ("Waba Admin", "Waba Supervisor", "Waba Agent", "System Manager")
 
@@ -44,7 +56,7 @@ def content():
 	blocks = [
 		{"id": "hdr", "type": "header", "data": {"text": '<span class="h4"><b>WhatsApp</b></span>', "col": 12}},
 	]
-	for i, (doctype, label) in enumerate(SHORTCUTS):
+	for i, label in enumerate(_shortcut_labels()):
 		blocks.append({"id": f"sc{i}", "type": "shortcut", "data": {"shortcut_name": label, "col": 3}})
 	blocks.append({"id": "sp", "type": "spacer", "data": {"col": 12}})
 	for i, (title, _rows) in enumerate(SECTIONS):
@@ -72,7 +84,12 @@ def link_rows():
 
 
 def shortcut_rows():
-	return [{"type": "DocType", "link_to": d, "label": l, "doc_view": "List"} for d, l in SHORTCUTS]
+	rows = [{"type": "DocType", "link_to": d, "label": l, "doc_view": "List"} for d, l in SHORTCUTS]
+	return rows + [{"type": "URL", "url": url, "label": label} for label, url in URL_SHORTCUTS]
+
+
+def _shortcut_labels():
+	return [label for _d, label in SHORTCUTS] + [label for label, _u in URL_SHORTCUTS]
 
 
 def merge_links(existing, wanted):
@@ -113,7 +130,7 @@ def missing_blocks(existing_content, shortcut_labels_have, cards_have):
 		b["data"].get("card_name") for b in blocks if b.get("type") == "card"
 	}
 	added = []
-	for _d, label in SHORTCUTS:
+	for label in _shortcut_labels():
 		if label not in named and label in shortcut_labels_have:
 			added.append({"id": "sc-" + _slug(label), "type": "shortcut", "data": {"shortcut_name": label, "col": 3}})
 	for title, _rows in SECTIONS:

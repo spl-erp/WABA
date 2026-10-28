@@ -17,9 +17,10 @@ from waba.rules import routing
 
 ROOT = os.path.join(os.path.dirname(__file__), "..", "waba", "doctype")
 FRAPPE_DOCTYPE_DIR = os.path.join(os.path.dirname(frappe.__file__), "core", "doctype")
-CORE_DOCTYPES = {"User"}
+CORE_DOCTYPES = {"User", "DocType"}
 EXPECTED = {
 	"Waba Portfolio", "Waba Meta App", "Waba Account", "Waba Number", "Waba Agent Access", "Waba Routing Rule", "Waba Webhook Event",
+	"Waba Identity", "Waba Conversation", "Waba Message",
 }
 SECRET_FIELDS = {"Waba Portfolio": {"access_token"}, "Waba Meta App": {"app_secret", "verify_token"}}
 

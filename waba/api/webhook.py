@@ -115,13 +115,14 @@ def handle_delivery(app_key, raw_body, signature_header, enqueue=True):
 
 
 def process_event(event):
-	"""Work out which account and number a stored delivery is about. Messages themselves are turned into
-	conversations by a later release; here the delivery is only classified and the account marked as heard from."""
+	"""Work out which account and number a stored delivery is about and store the customer messages in it.
+	Delivery status updates (sent, delivered, read) are applied by a later release."""
 	doc = frappe.get_doc("Waba Webhook Event", event)
 	if doc.status != "Received":
 		return
 	try:
-		summary = webhook.summarise(json.loads(doc.payload))
+		payload = json.loads(doc.payload)
+		summary = webhook.summarise(payload)
 		account = _account_for(summary["waba_ids"], doc.meta_app)
 		number = _number_for(summary["phone_number_ids"], account)
 		notes = []
@@ -132,10 +133,10 @@ def process_event(event):
 		elif not account:
 			status = "Ignored"
 			notes.append("No WhatsApp Account is set up for this WABA ID on this Meta app.")
-		elif summary["phone_number_ids"] and not number:
-			notes.append("The number is not set up yet (run Sync numbers on the account).")
-		if summary["message_count"] or summary["status_count"]:
-			notes.append("Stored only; conversations are built in a later release.")
+		else:
+			notes += _store_message_changes(payload, account, doc.name)
+			if summary["status_count"]:
+				notes.append("Status updates are applied in a later release.")
 		doc.db_set(
 			{"status": status, "waba_account": account, "waba_number": number, "note": " ".join(notes) or None},
 			update_modified=False,
@@ -145,6 +146,33 @@ def process_event(event):
 	except Exception:
 		doc.db_set({"status": "Failed", "note": "Could not be examined; see the Error Log."}, update_modified=False)
 		frappe.log_error(title="Waba: webhook event could not be examined")
+
+
+def _store_message_changes(payload, account, event):
+	from waba import inbound
+
+	notes, stored, duplicates, unidentified, unknown = [], 0, 0, 0, set()
+	for entry in payload.get("entry") or []:
+		for change in (entry.get("changes") or []) if isinstance(entry, dict) else []:
+			value = change.get("value") if isinstance(change, dict) and isinstance(change.get("value"), dict) else None
+			if not value or change.get("field") != "messages" or not value.get("messages"):
+				continue
+			phone_number_id = str((value.get("metadata") or {}).get("phone_number_id") or "")
+			number = _number_for([phone_number_id], account)
+			if not number:
+				unknown.add(phone_number_id)
+				continue
+			counts = inbound.store_messages(value, number, event)
+			stored += counts["stored"]
+			duplicates += counts["duplicates"]
+			unidentified += counts["unidentified"]
+	if stored or duplicates:
+		notes.append(f"{stored} message(s) stored" + (f", {duplicates} already known." if duplicates else "."))
+	if unidentified:
+		notes.append(f"{unidentified} message(s) had no usable sender.")
+	if unknown:
+		notes.append("Number not set up yet (run Sync numbers on the account): " + ", ".join(sorted(unknown)) + ".")
+	return notes
 
 
 def _account_for(waba_ids, meta_app):

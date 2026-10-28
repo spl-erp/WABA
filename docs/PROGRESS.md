@@ -7,7 +7,7 @@ Plan: 12 chunks, each shown on UAT before the next starts. Sizes are relative (S
 |---|---|---|---|---|---|
 | C1 | Setup screens | Verified on UAT (15 checks pass), awaiting owner acceptance | Waba workspace; create Portfolio, Meta App, Account, Number, Agent Access, Routing Rule; validation messages | Docs confirmed in words | S |
 | C2 | Connect Meta | Verified on UAT offline (19 checks pass); live Meta test pending |  Webhook URL and verify token; Meta "Verify" succeeds; Test connection, Sync numbers; raw events logged | Meta test app and company test number | M |
-| C3 | Conversations (read-only) | Not started | Messages and Conversations lists; inbound text on the right record or in Triage; window state | Rule for unknown senders | M |
+| C3 | Conversations (read-only) | Verified on UAT (22 checks pass), awaiting acceptance | Messages and Conversations lists; inbound text on the right record or in Triage; window state | Rule for unknown senders | M |
 | C4 | Send and templates | Not started | Send inside the window; sent/delivered/read ticks; failures in plain words; Sync templates | None | M |
 | C5 | The Inbox | Not started | The real inbox page with live updates, reply box, window indicator, template picker | None | L |
 | C6 | Routing and teamwork | Not started | Assignment rules, away/capacity, transfer, done, notes, quick replies, own-only and manager visibility | None | L |
