@@ -1,0 +1,116 @@
+{
+ "app": "waba",
+ "creation": "2026-10-28 17:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Sidebar",
+ "header_icon": "message-circle",
+ "idx": 0,
+ "items": [
+  {
+   "type": "Link",
+   "label": "Home",
+   "link_type": "Workspace",
+   "link_to": "Waba",
+   "icon": "message-circle",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Conversations",
+   "link_type": "DocType",
+   "link_to": "Waba Conversation",
+   "icon": "messages-square",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Triage",
+   "link_type": "DocType",
+   "link_to": "Waba Conversation",
+   "icon": "inbox",
+   "collapsible": 1,
+   "filters": "[[\"Waba Conversation\", \"match_state\", \"=\", \"Triage\"]]"
+  },
+  {
+   "type": "Link",
+   "label": "Messages",
+   "link_type": "DocType",
+   "link_to": "Waba Message",
+   "icon": "message-square-text",
+   "collapsible": 1
+  },
+  {
+   "type": "Section Break",
+   "label": "Setup",
+   "icon": "settings",
+   "collapsible": 1,
+   "indent": 1,
+   "link_type": "DocType"
+  },
+  {
+   "type": "Link",
+   "label": "WhatsApp Accounts",
+   "link_type": "DocType",
+   "link_to": "Waba Account",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Numbers",
+   "link_type": "DocType",
+   "link_to": "Waba Number",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Meta Apps",
+   "link_type": "DocType",
+   "link_to": "Waba Meta App",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Portfolios",
+   "link_type": "DocType",
+   "link_to": "Waba Portfolio",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Section Break",
+   "label": "Logs",
+   "icon": "scroll-text",
+   "collapsible": 1,
+   "indent": 1,
+   "link_type": "DocType",
+   "keep_closed": 1
+  },
+  {
+   "type": "Link",
+   "label": "Webhook Events",
+   "link_type": "DocType",
+   "link_to": "Waba Webhook Event",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "WhatsApp User IDs",
+   "link_type": "DocType",
+   "link_to": "Waba Identity",
+   "collapsible": 1,
+   "child": 1
+  }
+ ],
+ "modified": "2026-10-28 17:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba",
+ "owner": "Administrator",
+ "sequence_id": 0.0,
+ "standard": 1,
+ "title": "Waba"
+}

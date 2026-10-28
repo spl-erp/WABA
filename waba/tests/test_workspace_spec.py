@@ -88,3 +88,38 @@ class TestMerge(unittest.TestCase):
 		self.assertEqual([b["data"].get("shortcut_name") for b in added], ["Webhook Events"])
 		self.assertEqual(spec.missing_blocks(spec.content(), labels, cards), [])
 		self.assertEqual(spec.missing_blocks(body, set(), set()), [])
+
+
+class TestSidebar(unittest.TestCase):
+	"""The sidebar is what people click every day; its file is shipped, so check it offline."""
+
+	PATH = os.path.join(os.path.dirname(__file__), "..", "waba", "sidebar", "waba", "waba.json")
+
+	def load(self):
+		with open(self.PATH, encoding="utf-8") as f:
+			return json.load(f)
+
+	def test_shape(self):
+		d = self.load()
+		self.assertEqual((d["doctype"], d["name"], d["title"], d["module"], d["standard"]), ("Sidebar", "Waba", "Waba", "Waba", 1))
+
+	def test_links_point_at_shipped_doctypes_or_the_workspace(self):
+		for item in self.load()["items"]:
+			if item["type"] != "Link":
+				continue
+			if item["link_type"] == "Workspace":
+				self.assertEqual(item["link_to"], spec.WORKSPACE)
+			else:
+				self.assertIn(item["link_to"], SHIPPED, item["label"])
+
+	def test_triage_filter_is_valid_json_and_names_a_real_field(self):
+		triage = next(i for i in self.load()["items"] if i["label"] == "Triage")
+		filters = json.loads(triage["filters"])
+		self.assertEqual(filters, [["Waba Conversation", "match_state", "=", "Triage"]])
+
+	def test_labels_are_unique_and_every_workspace_doctype_is_reachable(self):
+		items = [i for i in self.load()["items"] if i["type"] == "Link"]
+		labels = [i["label"] for i in items]
+		self.assertEqual(len(labels), len(set(labels)))
+		reachable = {i["link_to"] for i in items}
+		self.assertTrue({d for _t, rows in spec.SECTIONS for d, _l, _x in rows} <= reachable)
