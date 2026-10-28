@@ -1,0 +1,130 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "app_name",
+  "enabled",
+  "app_id",
+  "live_mode",
+  "column_break_app1",
+  "app_secret",
+  "verify_token",
+  "webhook_section",
+  "webhook_key",
+  "callback_url",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "app_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "app_id",
+   "fieldtype": "Data",
+   "label": "Meta App ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "live_mode",
+   "fieldtype": "Check",
+   "label": "App is in Live mode",
+   "description": "Real (non-test) webhooks are only sent when the app is Live."
+  },
+  {
+   "fieldname": "column_break_app1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "app_secret",
+   "fieldtype": "Password",
+   "label": "App Secret",
+   "reqd": 1,
+   "description": "Signs every webhook (X-Hub-Signature-256). One per Meta app."
+  },
+  {
+   "fieldname": "verify_token",
+   "fieldtype": "Password",
+   "label": "Webhook Verify Token",
+   "reqd": 1,
+   "description": "Meta sends this once when the callback URL is saved; it must match."
+  },
+  {
+   "fieldname": "webhook_section",
+   "fieldtype": "Section Break",
+   "label": "Webhook"
+  },
+  {
+   "fieldname": "webhook_key",
+   "fieldtype": "Data",
+   "label": "Webhook key",
+   "unique": 1,
+   "read_only": 1,
+   "description": "Generated. It is part of the callback URL and tells the ERP which app an event is for."
+  },
+  {
+   "fieldname": "callback_url",
+   "fieldtype": "Data",
+   "label": "Callback URL",
+   "description": "Paste this into the Meta app's WhatsApp configuration.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Meta App",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:app_name",
+ "naming_rule": "By fieldname",
+ "track_changes": 1
+}

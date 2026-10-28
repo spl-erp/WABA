@@ -1,0 +1,144 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "portfolio_name",
+  "enabled",
+  "portfolio_id",
+  "column_break_pf1",
+  "access_token",
+  "token_notes",
+  "meta_section",
+  "verification_status",
+  "number_cap",
+  "numbers_used",
+  "column_break_pf2",
+  "messaging_tier",
+  "inr_status",
+  "last_checked"
+ ],
+ "fields": [
+  {
+   "fieldname": "portfolio_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "portfolio_id",
+   "fieldtype": "Data",
+   "label": "Meta Business Portfolio ID"
+  },
+  {
+   "fieldname": "column_break_pf1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "access_token",
+   "fieldtype": "Password",
+   "label": "System User Access Token",
+   "description": "Generated in Meta Business Settings for a system user with Full control of the WhatsApp accounts. One token covers every account of this portfolio."
+  },
+  {
+   "fieldname": "token_notes",
+   "fieldtype": "Small Text",
+   "label": "Token notes",
+   "description": "Expiry preference chosen when it was generated, and who generated it."
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Read from Meta (filled by the connection check)"
+  },
+  {
+   "fieldname": "verification_status",
+   "fieldtype": "Data",
+   "label": "Business verification",
+   "read_only": 1
+  },
+  {
+   "fieldname": "number_cap",
+   "fieldtype": "Int",
+   "label": "Phone number cap",
+   "read_only": 1
+  },
+  {
+   "fieldname": "numbers_used",
+   "fieldtype": "Int",
+   "label": "Phone numbers in use",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_pf2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "messaging_tier",
+   "fieldtype": "Data",
+   "label": "Messaging limit tier",
+   "read_only": 1
+  },
+  {
+   "fieldname": "inr_status",
+   "fieldtype": "Data",
+   "label": "INR billing status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_checked",
+   "fieldtype": "Datetime",
+   "label": "Last checked",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Portfolio",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:portfolio_name",
+ "naming_rule": "By fieldname",
+ "track_changes": 1
+}

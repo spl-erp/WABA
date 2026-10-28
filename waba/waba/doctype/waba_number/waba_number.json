@@ -1,0 +1,310 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "account",
+  "display_number",
+  "display_name",
+  "enabled",
+  "column_break_nu1",
+  "phone_number_id",
+  "name_status",
+  "quality_rating",
+  "status",
+  "use_section",
+  "number_type",
+  "owner_user",
+  "team",
+  "column_break_nu2",
+  "purpose_conversations",
+  "purpose_documents",
+  "purpose_notifications",
+  "purpose_campaigns",
+  "hours_section",
+  "hours_enabled",
+  "hours_start",
+  "hours_end",
+  "working_days",
+  "column_break_nu3",
+  "auto_reply",
+  "out_of_hours_message",
+  "assignment_section",
+  "sticky_days",
+  "default_max_open",
+  "column_break_nu4",
+  "visibility_mode",
+  "agents_section",
+  "agents",
+  "rules_section",
+  "routing_rules"
+ ],
+ "fields": [
+  {
+   "fieldname": "account",
+   "fieldtype": "Link",
+   "label": "Account",
+   "options": "Waba Account",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "display_number",
+   "fieldtype": "Data",
+   "label": "Number",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "International format. Stored as +<digits>; it is the record's ID."
+  },
+  {
+   "fieldname": "display_name",
+   "fieldtype": "Data",
+   "label": "Display name",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1"
+  },
+  {
+   "fieldname": "column_break_nu1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "phone_number_id",
+   "fieldtype": "Data",
+   "label": "Phone number ID (Meta)",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "name_status",
+   "fieldtype": "Data",
+   "label": "Display name status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quality_rating",
+   "fieldtype": "Select",
+   "label": "Quality rating",
+   "options": "\nGREEN\nYELLOW\nRED\nUNKNOWN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "use_section",
+   "fieldtype": "Section Break",
+   "label": "How this number is used"
+  },
+  {
+   "fieldname": "number_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Shared\nPersonal",
+   "default": "Shared",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Shared: a team or region. Personal: assigned to one agent (a company number, not their own)."
+  },
+  {
+   "fieldname": "owner_user",
+   "fieldtype": "Link",
+   "label": "Owner (Personal numbers)",
+   "options": "User",
+   "depends_on": "eval:doc.number_type==\"Personal\"",
+   "mandatory_depends_on": "eval:doc.number_type==\"Personal\""
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Data",
+   "label": "Team or region"
+  },
+  {
+   "fieldname": "column_break_nu2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "purpose_conversations",
+   "fieldtype": "Check",
+   "label": "Customer conversations",
+   "default": "1"
+  },
+  {
+   "fieldname": "purpose_documents",
+   "fieldtype": "Check",
+   "label": "Send documents (quotations, invoices)",
+   "default": "1"
+  },
+  {
+   "fieldname": "purpose_notifications",
+   "fieldtype": "Check",
+   "label": "Notifications and reminders",
+   "default": "1"
+  },
+  {
+   "fieldname": "purpose_campaigns",
+   "fieldtype": "Check",
+   "label": "Campaigns",
+   "default": "0"
+  },
+  {
+   "fieldname": "hours_section",
+   "fieldtype": "Section Break",
+   "label": "Business hours"
+  },
+  {
+   "fieldname": "hours_enabled",
+   "fieldtype": "Check",
+   "label": "Use business hours"
+  },
+  {
+   "fieldname": "hours_start",
+   "fieldtype": "Time",
+   "label": "From",
+   "depends_on": "hours_enabled"
+  },
+  {
+   "fieldname": "hours_end",
+   "fieldtype": "Time",
+   "label": "To",
+   "depends_on": "hours_enabled"
+  },
+  {
+   "fieldname": "working_days",
+   "fieldtype": "Data",
+   "label": "Working days",
+   "default": "Mon,Tue,Wed,Thu,Fri,Sat",
+   "depends_on": "hours_enabled"
+  },
+  {
+   "fieldname": "column_break_nu3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "auto_reply",
+   "fieldtype": "Check",
+   "label": "Reply automatically out of hours",
+   "depends_on": "hours_enabled"
+  },
+  {
+   "fieldname": "out_of_hours_message",
+   "fieldtype": "Small Text",
+   "label": "Out-of-hours message",
+   "depends_on": "auto_reply",
+   "description": "Sent as a free-form reply, so only while the customer's 24-hour window is open."
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment"
+  },
+  {
+   "fieldname": "sticky_days",
+   "fieldtype": "Int",
+   "label": "Sticky days",
+   "default": "7",
+   "description": "A conversation stays with its agent while there was activity within this many days."
+  },
+  {
+   "fieldname": "default_max_open",
+   "fieldtype": "Int",
+   "label": "Default maximum open conversations per agent",
+   "default": "0",
+   "description": "0 means unlimited."
+  },
+  {
+   "fieldname": "column_break_nu4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "visibility_mode",
+   "fieldtype": "Select",
+   "label": "Agents can see",
+   "options": "Own conversations only\nAll conversations on this number",
+   "default": "Own conversations only"
+  },
+  {
+   "fieldname": "agents_section",
+   "fieldtype": "Section Break",
+   "label": "Agents"
+  },
+  {
+   "fieldname": "agents",
+   "fieldtype": "Table",
+   "label": "Agents",
+   "options": "Waba Agent Access"
+  },
+  {
+   "fieldname": "rules_section",
+   "fieldtype": "Section Break",
+   "label": "Routing rules"
+  },
+  {
+   "fieldname": "routing_rules",
+   "fieldtype": "Table",
+   "label": "Routing rules",
+   "options": "Waba Routing Rule",
+   "description": "First match wins. Leave empty for the default order. A Personal number ignores these."
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Number",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1,
+   "report": 1
+  },
+  {
+   "role": "Waba Agent",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "display_name",
+ "show_title_field_in_link": 1,
+ "track_changes": 1,
+ "search_fields": "display_number,display_name,team"
+}

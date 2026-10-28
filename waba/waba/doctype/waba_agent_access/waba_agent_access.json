@@ -1,0 +1,88 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "role",
+  "available",
+  "max_open",
+  "rep_code",
+  "languages",
+  "may_send_templates",
+  "may_send_campaigns"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Select",
+   "label": "Role",
+   "options": "Agent\nSupervisor",
+   "default": "Agent",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "available",
+   "fieldtype": "Check",
+   "label": "Available",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "max_open",
+   "fieldtype": "Int",
+   "label": "Max open",
+   "default": "0",
+   "in_list_view": 1,
+   "description": "0 uses the number's default."
+  },
+  {
+   "fieldname": "rep_code",
+   "fieldtype": "Data",
+   "label": "Rep code",
+   "in_list_view": 1,
+   "description": "Used in QR codes and links, for example R12."
+  },
+  {
+   "fieldname": "languages",
+   "fieldtype": "Data",
+   "label": "Languages",
+   "description": "Language codes, comma separated, for example hi,en."
+  },
+  {
+   "fieldname": "may_send_templates",
+   "fieldtype": "Check",
+   "label": "May send templates",
+   "default": "1"
+  },
+  {
+   "fieldname": "may_send_campaigns",
+   "fieldtype": "Check",
+   "label": "May send campaigns",
+   "default": "0"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Agent Access",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1,
+ "editable_grid": 1
+}

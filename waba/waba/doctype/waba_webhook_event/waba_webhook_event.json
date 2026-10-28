@@ -1,0 +1,166 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 15:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "event_hash",
+  "status",
+  "received_at",
+  "column_break_we1",
+  "meta_app",
+  "waba_account",
+  "waba_number",
+  "summary_section",
+  "waba_id",
+  "phone_number_id",
+  "column_break_we2",
+  "event_fields",
+  "message_count",
+  "status_count",
+  "note",
+  "payload_section",
+  "payload"
+ ],
+ "fields": [
+  {
+   "fieldname": "event_hash",
+   "fieldtype": "Data",
+   "label": "Delivery ID",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "SHA-256 of the exact bytes Meta sent. Meta re-sends an unchanged delivery until it gets a 200, so the same ID means a repeat."
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Received\nProcessed\nIgnored\nFailed",
+   "default": "Received",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "received_at",
+   "fieldtype": "Datetime",
+   "label": "Received At",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_we1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meta_app",
+   "fieldtype": "Link",
+   "label": "Meta App",
+   "options": "Waba Meta App",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "waba_account",
+   "fieldtype": "Link",
+   "label": "WhatsApp Account",
+   "options": "Waba Account",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "waba_number",
+   "fieldtype": "Link",
+   "label": "Number",
+   "options": "Waba Number",
+   "read_only": 1
+  },
+  {
+   "fieldname": "summary_section",
+   "fieldtype": "Section Break",
+   "label": "What it contained"
+  },
+  {
+   "fieldname": "waba_id",
+   "fieldtype": "Data",
+   "label": "WABA ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "phone_number_id",
+   "fieldtype": "Data",
+   "label": "Phone Number ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_we2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "event_fields",
+   "fieldtype": "Data",
+   "label": "Event Types",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "For example messages, account_update, message_template_status_update."
+  },
+  {
+   "fieldname": "message_count",
+   "fieldtype": "Int",
+   "label": "Messages",
+   "read_only": 1
+  },
+  {
+   "fieldname": "status_count",
+   "fieldtype": "Int",
+   "label": "Status Updates",
+   "read_only": 1
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payload_section",
+   "fieldtype": "Section Break",
+   "label": "Raw Delivery"
+  },
+  {
+   "fieldname": "payload",
+   "fieldtype": "Code",
+   "label": "Payload",
+   "options": "JSON",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 15:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Webhook Event",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:event_hash",
+ "naming_rule": "By fieldname",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "report": 1
+  }
+ ]
+}

@@ -1,0 +1,212 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "account_name",
+  "enabled",
+  "environment",
+  "column_break_ac1",
+  "portfolio",
+  "meta_app",
+  "waba_id",
+  "api_version",
+  "meta_section",
+  "currency",
+  "timezone",
+  "verification_status",
+  "review_status",
+  "payment_status",
+  "health_section",
+  "token_valid",
+  "restricted",
+  "column_break_ac2",
+  "last_webhook_at",
+  "last_checked",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "fieldname": "account_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "environment",
+   "fieldtype": "Select",
+   "label": "Environment",
+   "options": "Production\nUAT\nDevelopment",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Shown on every screen so a UAT account is never mistaken for production."
+  },
+  {
+   "fieldname": "column_break_ac1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "portfolio",
+   "fieldtype": "Link",
+   "label": "Portfolio",
+   "options": "Waba Portfolio",
+   "reqd": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "meta_app",
+   "fieldtype": "Link",
+   "label": "Meta App",
+   "options": "Waba Meta App",
+   "reqd": 1
+  },
+  {
+   "fieldname": "waba_id",
+   "fieldtype": "Data",
+   "label": "WABA ID (Messaging account)",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "api_version",
+   "fieldtype": "Data",
+   "label": "Graph API version",
+   "default": "v25.0",
+   "description": "Pinned. Meta retires a version about two years after release."
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "Read from Meta"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timezone",
+   "fieldtype": "Data",
+   "label": "Time zone",
+   "read_only": 1
+  },
+  {
+   "fieldname": "verification_status",
+   "fieldtype": "Data",
+   "label": "Business verification",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_status",
+   "fieldtype": "Data",
+   "label": "Account review",
+   "read_only": 1
+  },
+  {
+   "fieldname": "payment_status",
+   "fieldtype": "Data",
+   "label": "Payment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "health_section",
+   "fieldtype": "Section Break",
+   "label": "Health"
+  },
+  {
+   "fieldname": "token_valid",
+   "fieldtype": "Check",
+   "label": "Access token valid",
+   "read_only": 1
+  },
+  {
+   "fieldname": "restricted",
+   "fieldtype": "Check",
+   "label": "Restricted or disabled by Meta",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ac2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_webhook_at",
+   "fieldtype": "Datetime",
+   "label": "Last webhook received",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_checked",
+   "fieldtype": "Datetime",
+   "label": "Last checked",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "fieldtype": "Small Text",
+   "label": "Last error",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Account",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1,
+   "share": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1,
+   "report": 1
+  },
+  {
+   "role": "Waba Agent",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:account_name",
+ "naming_rule": "By fieldname",
+ "track_changes": 1
+}
