@@ -85,6 +85,7 @@ def handle_delivery(app_key, raw_body, signature_header, enqueue=True):
 		{
 			"doctype": "Waba Webhook Event",
 			"event_hash": event_hash,
+			"title": webhook.title(summary),
 			"status": "Received",
 			"received_at": now_datetime(),
 			"meta_app": app,

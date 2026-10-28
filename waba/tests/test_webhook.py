@@ -44,6 +44,13 @@ class TestBodyHash(unittest.TestCase):
 		self.assertEqual(len(wh.body_hash(b"x")), 64)
 
 
+class TestTitle(unittest.TestCase):
+	def test_title(self):
+		s = wh.summarise(delivery(messages=[{"id": "m1"}]))
+		self.assertEqual(wh.title(s), "messages: 1 message(s), 0 status update(s)")
+		self.assertEqual(wh.title(wh.summarise({})), "event: 0 message(s), 0 status update(s)")
+
+
 class TestParse(unittest.TestCase):
 	def test_object_only(self):
 		self.assertEqual(wh.parse(b'{"a": 1}'), {"a": 1})

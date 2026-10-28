@@ -38,6 +38,7 @@ def store_messages(value, number, event):
 					"conversation": conversation.name,
 					"direction": "In",
 					"message_type": m["type"],
+					"preview": inbound.preview(m["body"]),
 					"status": "Received",
 					"sent_at": sent_at,
 					"waba_number": number,
@@ -67,6 +68,7 @@ def _conversation(key, number, m):
 				"customer_phone": m["phone"],
 				"customer_bsuid": m["bsuid"],
 				"profile_name": m["profile_name"],
+				"customer_label": inbound.customer_label(m["profile_name"], m["phone"], m["bsuid"]),
 				"match_state": "Triage",
 				"status": "Open",
 				"unread_count": 0,
@@ -91,6 +93,11 @@ def _update_conversation(conversation, m, sent_at, portfolio):
 	for field, source in (("customer_phone", "phone"), ("customer_bsuid", "bsuid"), ("profile_name", "profile_name")):
 		if m[source] and not conversation.get(field):
 			values[field] = m[source]
+	values["customer_label"] = inbound.customer_label(
+		values.get("profile_name") or conversation.profile_name,
+		values.get("customer_phone") or conversation.customer_phone,
+		values.get("customer_bsuid") or conversation.customer_bsuid,
+	)
 
 	party = None
 	if conversation.match_state != "Matched":

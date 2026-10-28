@@ -72,3 +72,9 @@ def _list(value):
 def _add(items, value):
 	if value is not None and str(value) and str(value) not in items:
 		items.append(str(value))
+
+
+def title(summary):
+	"""A readable name for a stored delivery, e.g. "messages: 2 message(s), 0 status update(s)"."""
+	kinds = ", ".join(summary["fields"]) or "event"
+	return f"{kinds}: {summary['message_count']} message(s), {summary['status_count']} status update(s)"

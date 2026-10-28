@@ -77,6 +77,13 @@ class TestHelpers(unittest.TestCase):
 		self.assertEqual(len(inbound.preview("x" * 500)), inbound.PREVIEW_LIMIT)
 		self.assertEqual(inbound.preview(None), "")
 
+	def test_customer_label(self):
+		self.assertEqual(inbound.customer_label("Rahul", "+919876543210", None), "Rahul · +919876543210")
+		self.assertEqual(inbound.customer_label(None, "+919876543210", None), "+919876543210")
+		self.assertEqual(inbound.customer_label("Asha", None, "IN.abc"), "Asha · IN.abc")
+		self.assertEqual(inbound.customer_label(" ", None, "IN.abc"), "IN.abc")
+		self.assertEqual(inbound.customer_label(None, None, None), "Unknown")
+
 	def test_conversation_key(self):
 		self.assertEqual(inbound.conversation_key("+911", "+9198", "IN.a"), "+911|+9198")
 		self.assertEqual(inbound.conversation_key("+911", None, "IN.a"), "+911|IN.a")

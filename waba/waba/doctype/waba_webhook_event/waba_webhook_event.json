@@ -4,6 +4,7 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "title",
   "event_hash",
   "status",
   "received_at",
@@ -24,13 +25,21 @@
  ],
  "fields": [
   {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Summary",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 3,
+   "description": "For example: messages, 1 message(s), 0 status update(s)."
+  },
+  {
    "fieldname": "event_hash",
    "fieldtype": "Data",
    "label": "Delivery ID",
    "reqd": 1,
    "unique": 1,
    "read_only": 1,
-   "in_list_view": 1,
    "description": "SHA-256 of the exact bytes Meta sent. Meta re-sends an unchanged delivery until it gets a 200, so the same ID means a repeat."
   },
   {
@@ -68,7 +77,8 @@
    "label": "WhatsApp Account",
    "options": "Waba Account",
    "read_only": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "waba_number",
@@ -110,7 +120,8 @@
    "fieldname": "message_count",
    "fieldtype": "Int",
    "label": "Messages",
-   "read_only": 1
+   "read_only": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "status_count",
@@ -162,5 +173,6 @@
    "read": 1,
    "report": 1
   }
- ]
+ ],
+ "title_field": "title"
 }

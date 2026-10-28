@@ -5,6 +5,7 @@
  "engine": "InnoDB",
  "field_order": [
   "message_id",
+  "preview",
   "conversation",
   "direction",
   "message_type",
@@ -26,6 +27,14 @@
    "unique": 1,
    "read_only": 1,
    "description": "Meta's ID. Unique: a message is stored once however often Meta re-sends it."
+  },
+  {
+   "fieldname": "preview",
+   "fieldtype": "Data",
+   "label": "Message",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 4
   },
   {
    "fieldname": "conversation",
@@ -51,8 +60,7 @@
    "fieldname": "message_type",
    "fieldtype": "Data",
    "label": "Type",
-   "read_only": 1,
-   "in_list_view": 1
+   "read_only": 1
   },
   {
    "fieldname": "column_break_ms1",
@@ -138,5 +146,5 @@
    "report": 1
   }
  ],
- "title_field": "message_type"
+ "title_field": "preview"
 }

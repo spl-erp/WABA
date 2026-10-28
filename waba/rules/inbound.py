@@ -93,6 +93,13 @@ def preview(text):
 	return text if len(text) <= PREVIEW_LIMIT else text[: PREVIEW_LIMIT - 1] + "…"
 
 
+def customer_label(profile_name, phone, bsuid):
+	"""How a customer is named in lists: "Rahul · +919876543210", or just the phone / user ID when there is no name."""
+	who = phone or bsuid or ""
+	name = (profile_name or "").strip()
+	return f"{name} · {who}" if name and who else (name or who or "Unknown")
+
+
 def conversation_key(number, phone, bsuid):
 	"""One thread per (business number, customer). The phone is the customer's identity when we have it; a
 	username-only customer is identified by the BSUID. None when the sender cannot be identified at all."""
