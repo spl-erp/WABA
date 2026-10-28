@@ -1,6 +1,8 @@
 ### Waba
 
-Whatsapp end to end intigration campatablity with ERP
+End-to-end WhatsApp Cloud API integration for Frappe/ERPNext: several WhatsApp Business Accounts, several numbers per account, agents working a shared inbox, templates, attachments and conversations linked to Leads, Contacts and Customers. Talks to Meta's Cloud API directly (no intermediary provider).
+
+**Status: under development, not yet released.**
 
 ### Installation
 
@@ -8,9 +10,20 @@ You can install this app using the [bench](https://github.com/frappe/bench) CLI:
 
 ```bash
 cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch heads/v16.51.0
-bench install-app waba
+bench get-app $URL_OF_THIS_REPO --branch main
+bench --site $SITE install-app waba
 ```
+
+### Updating an existing site
+
+```bash
+cd $PATH_TO_YOUR_BENCH/apps/waba && git pull
+cd $PATH_TO_YOUR_BENCH
+bench --site $SITE migrate        # creates doctypes and re-applies the app's configuration
+# then restart the web and worker processes and clear the cache
+```
+
+All configuration the app needs is created by its own migrate step and patches, never by hand in the Desk, so a migrate on any site brings it to the same state.
 
 ### Contributing
 

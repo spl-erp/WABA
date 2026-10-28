@@ -1,9 +1,9 @@
 [project]
 name = "waba"
 authors = [
-    { name = "erp@splashjetink.com", email = "erp@splashjetink.com "}
+    { name = "erp@splashjetink.com", email = "erp@splashjetink.com"}
 ]
-description = "Whatsapp end to end intigration campatablity with ERP"
+description = "End-to-end WhatsApp Cloud API integration for Frappe/ERPNext: accounts, numbers, agents, shared inbox, templates and CRM-linked conversations."
 requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]

@@ -1,8 +1,8 @@
 app_name = "waba"
 app_title = "Waba"
 app_publisher = "erp@splashjetink.com"
-app_description = "Whatsapp end to end intigration campatablity with ERP"
-app_email = "erp@splashjetink.com "
+app_description = "End-to-end WhatsApp Cloud API integration for Frappe/ERPNext: accounts, numbers, agents, shared inbox, templates and CRM-linked conversations."
+app_email = "erp@splashjetink.com"
 app_license = "mit"
 
 # Apps
