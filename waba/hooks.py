@@ -280,7 +280,11 @@ after_migrate = ["waba.setup.install.execute"]
 
 scheduler_events = {
 	"cron": {
-		"*/2 * * * *": ["waba.api.webhook.retry_waiting"],
+		"*/2 * * * *": [
+			"waba.api.webhook.retry_waiting",
+			"waba.assignment.assign_waiting",
+			"waba.assignment.alert_unanswered",
+		],
 	},
 }
 
@@ -289,3 +293,23 @@ app_include_js = ["/assets/waba/js/waba_alerts.js"]
 
 # tells the browser whether this user gets the new-message alerts (waba.boot)
 boot_session = "waba.boot.boot_session"
+
+# who may see which conversation (the team tree): applies to Desk lists, reports and links as well as the inbox
+permission_query_conditions = {
+	"Waba Conversation": "waba.permissions.conversation_query_conditions",
+	"Waba Message": "waba.permissions.message_query_conditions",
+	"Waba Note": "waba.permissions.note_query_conditions",
+	"Waba Quick Reply": "waba.permissions.quick_reply_query_conditions",
+}
+has_permission = {
+	"Waba Conversation": "waba.permissions.conversation_has_permission",
+	"Waba Message": "waba.permissions.message_has_permission",
+	"Waba Note": "waba.permissions.note_has_permission",
+}
+
+# the Lead, Contact and Customer forms get a WhatsApp button and a WhatsApp section (added to, never replacing, any other script)
+doctype_js = {
+	"Lead": ["public/js/waba_party.js"],
+	"Contact": ["public/js/waba_party.js"],
+	"Customer": ["public/js/waba_party.js"],
+}

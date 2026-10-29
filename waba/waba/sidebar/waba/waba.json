@@ -73,6 +73,22 @@
   },
   {
    "type": "Link",
+   "label": "Teams",
+   "link_type": "DocType",
+   "link_to": "Waba Team",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Quick Replies",
+   "link_type": "DocType",
+   "link_to": "Waba Quick Reply",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
    "label": "Templates",
    "link_type": "DocType",
    "link_to": "Waba Template",
@@ -121,7 +137,7 @@
    "child": 1
   }
  ],
- "modified": "2026-10-28 20:00:00.000000",
+ "modified": "2026-10-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba",

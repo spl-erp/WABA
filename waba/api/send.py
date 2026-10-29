@@ -1,12 +1,13 @@
 """Sending from the ERP: a free-text reply inside the 24-hour window, or an approved template at any time.
 
-Who may send: Waba Admin, Waba Supervisor and System Manager for now; agents are admitted, with the per-person
-visibility rules, in a later release (the inbox work). Every send is stored as an outgoing Waba Message BEFORE Meta is
+Who may send: Waba Admin, Waba Supervisor, Waba Agent and System Manager; which conversations a person may open or send in is
+decided by waba.permissions (the team tree). Every send is stored as an outgoing Waba Message BEFORE Meta is
 called (status Queued), so a failure is never lost: it is kept as Failed with Meta's code and a plain explanation. Meta
 then reports Sent / Delivered / Read / Failed through the webhook (see waba.status_updates).
 
-C4 sends templates only to customers who already have a conversation (they wrote to us first), and refuses MARKETING
-templates until the consent check exists (a later release).
+A template goes out only when waba.rules.consent allows it: Utility only, never to a customer who opted out, and without
+stored consent only to a customer who has written to us first; a business-started one also counts against Meta's daily
+limit. (Starting a conversation from a Lead, Contact or Customer is waba.api.party.start.)
 """
 
 import json
@@ -16,12 +17,14 @@ from frappe import _
 from frappe.utils import now_datetime
 from frappe.utils.password import get_decrypted_password
 
-from waba.constants import DEFAULT_API_VERSION, ROLE_ADMIN, ROLE_SUPERVISOR
+from waba.constants import DEFAULT_API_VERSION, ROLE_ADMIN, ROLE_AGENT, ROLE_SUPERVISOR
+from waba import parties, permissions
 from waba.meta import graph
-from waba.rules import errors, outbound
+from waba.rules import consent as rules_consent
+from waba.rules import errors, outbound, window
 from waba.rules.inbound import preview as make_preview
 
-SENDERS = (ROLE_ADMIN, ROLE_SUPERVISOR, "System Manager")
+SENDERS = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT, "System Manager")
 
 
 class _Context:
@@ -29,6 +32,8 @@ class _Context:
 		"""`need_token=False` for actions that only read the ERP's own records (listing templates) or can do without Meta."""
 		frappe.only_for(SENDERS)
 		self.conversation = frappe.get_doc("Waba Conversation", conversation)
+		if not permissions.conversation_has_permission(self.conversation):
+			frappe.throw(_("You may not open this conversation."), frappe.PermissionError)
 		self.number = frappe.get_doc("Waba Number", self.conversation.waba_number)
 		self.account = frappe.get_doc("Waba Account", self.number.account)
 		if not (self.number.enabled and self.account.enabled):
@@ -77,8 +82,10 @@ def send_template(conversation, template, params=None):
 		frappe.throw(_("That template belongs to a different WhatsApp account."))
 	if tpl.status != "APPROVED":
 		frappe.throw(_("Template {0} is {1}, so it cannot be sent.").format(tpl.title, tpl.status))
-	if tpl.category == "MARKETING":
-		frappe.throw(_("Marketing templates need the consent check, which arrives in a later release. Use a utility template."))
+	ctx.refuse_unless(parties.check_conversation_template(ctx.conversation, tpl.category))
+	if not window.is_window_open(ctx.conversation.last_inbound_at, now_datetime()):  # a business-started conversation counts against Meta's daily limit
+		limit = rules_consent.daily_limit(frappe.db.get_value("Waba Portfolio", ctx.account.portfolio, "messaging_tier"))
+		ctx.refuse_unless(rules_consent.check_daily_limit(parties.started_in_24h(ctx.account.portfolio), limit))
 	values = _as_list(params)
 	problems = outbound.validate_params(tpl.body_text, values)
 	if problems:
@@ -88,7 +95,12 @@ def send_template(conversation, template, params=None):
 	return _deliver(
 		ctx,
 		payload,
-		{"message_type": "template", "waba_template": tpl.name, "body": outbound.fill(tpl.body_text, [str(v).strip() for v in values])},
+		{
+			"message_type": "template",
+			"waba_template": tpl.name,
+			"business_initiated": 0 if window.is_window_open(ctx.conversation.last_inbound_at, now_datetime()) else 1,
+			"body": outbound.fill(tpl.body_text, [str(v).strip() for v in values]),
+		},
 	)
 
 
@@ -98,7 +110,7 @@ def templates_for(conversation):
 	ctx = _Context(conversation, need_token=False)
 	return frappe.get_all(
 		"Waba Template",
-		filters={"account": ctx.account.name, "status": "APPROVED", "category": ["!=", "MARKETING"]},
+		filters={"account": ctx.account.name, "status": "APPROVED", "category": "UTILITY"},
 		fields=["name", "title", "category", "body_text", "variable_count"],
 		order_by="title asc",
 	)

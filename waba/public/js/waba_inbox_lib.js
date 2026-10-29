@@ -30,6 +30,12 @@
 		copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
 		clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
 		info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+		zap: '<path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>',
+		transfer: '<path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+		done: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+		undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
+		note: '<path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h6"/><path d="M8 13h8"/><path d="M8 17h5"/>',
+		user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
 	};
 
 	function icon(name, size, cls) {
@@ -197,5 +203,23 @@
 		return out;
 	}
 
-	return { linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, dayLabel, clockLabel, AVATAR_COLORS };
+
+	// ------------------------------------------------------------------ the conversation timeline
+	/** Messages and notes/events merged by time, oldest first. Each item: {type: "message"|"note"|"event", at, data}.
+	 * A message and a note at the same instant keep the message first. */
+	function timeline(messages, notes) {
+		const items = [];
+		(messages || []).forEach((m, i) => items.push({ type: "message", at: String(m.sent_at || ""), order: i, data: m }));
+		(notes || []).forEach((n, i) => items.push({ type: n.kind === "Event" ? "event" : "note", at: String(n.creation || ""), order: 1e6 + i, data: n }));
+		return items.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.order - b.order));
+	}
+
+	/** Quick replies matching what was typed: in the title or the text, case-insensitive; all of them for a blank query. */
+	function filterQuickReplies(list, query) {
+		const q = String(query || "").trim().toLowerCase();
+		if (!q) return list || [];
+		return (list || []).filter((r) => String(r.title || "").toLowerCase().includes(q) || String(r.body || "").toLowerCase().includes(q));
+	}
+
+	return { timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, dayLabel, clockLabel, AVATAR_COLORS };
 });

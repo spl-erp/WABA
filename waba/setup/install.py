@@ -64,6 +64,32 @@ def _add_missing_to_workspace():
 		doc.save(ignore_permissions=True)
 
 
+PARTY_DOCTYPES = ("Lead", "Contact", "Customer")
+
+
+def party_fields():
+	"""The consent record Waba keeps on a Lead, Contact and Customer. Read-only on the form: it changes only through
+	waba.api.party.record_consent (which checks permission and leaves a comment) and the customer's own STOP / START."""
+	return [
+		{"fieldname": "waba_section", "fieldtype": "Section Break", "label": "WhatsApp", "collapsible": 1},
+		{"fieldname": "waba_consent", "fieldtype": "Select", "label": "WhatsApp Consent", "options": "Unknown\nYes\nNo", "default": "Unknown", "read_only": 1, "no_copy": 1,
+		 "description": "May the business start a WhatsApp conversation with this person?"},
+		{"fieldname": "waba_consent_on", "fieldtype": "Date", "label": "Consent Date", "read_only": 1, "no_copy": 1},
+		{"fieldname": "waba_consent_source", "fieldtype": "Data", "label": "Consent Source", "read_only": 1, "no_copy": 1,
+		 "description": "Where the agreement came from, for example an IndiaMART enquiry or a verbal yes."},
+	]
+
+
+def ensure_party_fields():
+	"""Custom fields on the customer records. Only for doctypes this site has; idempotent."""
+	from frappe.custom.doctype.custom_field.custom_field import create_custom_fields
+
+	fields = {dt: party_fields() for dt in PARTY_DOCTYPES if frappe.db.exists("DocType", dt)}
+	if fields:
+		create_custom_fields(fields, ignore_validate=True)
+
+
 def execute():
 	ensure_roles()
 	ensure_workspace()
+	ensure_party_fields()

@@ -9,6 +9,7 @@ import datetime
 import frappe
 from frappe.utils import convert_utc_to_system_timezone
 
+from waba import assignment
 from waba.rules import statuses
 
 
@@ -39,11 +40,7 @@ def apply_statuses(value):
 			values.update({"error_code": str(code or ""), "error_message": text})
 		frappe.db.set_value("Waba Message", name, values, update_modified=False)
 		result["updated"] += 1
-		frappe.publish_realtime(
-			"waba_inbox",
-			{"conversation": frappe.db.get_value("Waba Message", name, "conversation"), "kind": "status"},
-			after_commit=True,
-		)
+		assignment.notify(frappe.db.get_value("Waba Message", name, "conversation"), "status")
 	return result
 
 

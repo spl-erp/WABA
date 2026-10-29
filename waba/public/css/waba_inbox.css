@@ -335,3 +335,82 @@
 .waba-findbar input { flex: 1; min-width: 0; height: 32px; border: 0; outline: 0; background: transparent; color: var(--w-ink); font-size: 14px; box-shadow: none; }
 .waba-find-count { font-size: 12.5px; color: var(--w-ink-2); white-space: nowrap; }
 @media (max-width: 768px) { .waba-findbar { margin: 8px 10px 0; } .waba-emoji { left: 10px; } }
+
+/* ------------------------------------------------------------------ teamwork: assignee, notes, quick replies, away */
+.waba-away {
+	flex: none; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; font-weight: 600; font-size: 14px; cursor: pointer;
+	background: var(--w-surface); color: var(--w-green-d); border: 1px solid var(--w-line); border-radius: 12px; box-shadow: var(--w-shadow);
+}
+.waba-away[hidden] { display: none; }
+.waba-away .waba-dot2 { width: 9px; height: 9px; border-radius: 50%; background: var(--w-green); }
+.waba-away.away { color: var(--w-orange); }
+.waba-away.away .waba-dot2 { background: var(--w-orange); }
+.waba-away:hover { border-color: var(--w-green); }
+.waba-away + .waba-refresh { margin-left: 0; }
+.waba-topbar .waba-searchbox + .waba-away { margin-left: auto; }
+
+.waba-scope { display: flex; gap: 4px; margin: 0 12px 6px; padding: 3px; background: var(--w-surface-2); border: 1px solid var(--w-line); border-radius: 10px; }
+.waba-scope[hidden] { display: none; }
+.waba-seg { flex: 1; min-width: 0; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--w-ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
+.waba-seg.active { background: var(--w-surface); color: var(--w-ink); box-shadow: var(--w-shadow); }
+.waba-tabs { overflow-x: auto; scrollbar-width: none; }
+.waba-tabs::-webkit-scrollbar { display: none; }
+.waba-chip.blue { background: rgba(47, 140, 244, 0.13); color: var(--w-blue); }
+
+.waba-th-assign { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 12.5px; font-weight: 600; color: var(--w-ink-2); flex-wrap: wrap; }
+.waba-th-assign.waiting { color: var(--w-orange); }
+.waba-th-assign .waba-why { font-weight: 500; color: var(--w-ink-3); }
+
+.waba-event { display: flex; justify-content: center; margin: 8px 0; }
+.waba-event span { max-width: 86%; text-align: center; font-size: 12.5px; line-height: 1.4; color: var(--w-ink-2); background: var(--w-chip); border-radius: 10px; padding: 4px 12px; }
+.waba-msg.note { justify-content: center; }
+.waba-bubble.note { background: #fff6d6; color: #3a2e0a; border: 1px dashed #e0c25a; max-width: 78%; border-radius: 12px; }
+.waba-bubble.note .waba-sender { color: #8a6a00; display: flex; align-items: center; gap: 4px; }
+[data-theme="dark"] .waba-bubble.note { background: #3a3318; color: #f3e8b8; border-color: #8a7324; }
+[data-theme="dark"] .waba-bubble.note .waba-sender { color: #e6c85a; }
+
+.waba-composer { flex-wrap: wrap; }
+.waba-compose-tabs { flex: 0 0 100%; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.waba-ctab { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 14px; border: 1px solid var(--w-line); border-radius: 999px; background: var(--w-surface); color: var(--w-ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.waba-ctab.active { background: var(--w-green-bg); border-color: var(--w-green); color: var(--w-green-d); }
+.waba-ctab.note.active { background: #fff6d6; border-color: #e0c25a; color: #8a6a00; }
+[data-theme="dark"] .waba-ctab.note.active { background: #3a3318; border-color: #8a7324; color: #e6c85a; }
+.waba-ctab-hint { font-size: 12px; color: var(--w-ink-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waba-inputwrap.note { background: #fffbe9; border-color: #e0c25a; }
+[data-theme="dark"] .waba-inputwrap.note { background: #2b2713; border-color: #8a7324; }
+.waba-send.note { background: #e0b520; box-shadow: 0 4px 12px rgba(224, 181, 32, 0.35); }
+
+.waba-quick {
+	position: absolute; left: 14px; bottom: calc(100% + 8px); z-index: 40; width: min(380px, calc(100% - 28px)); padding: 10px;
+	background: var(--w-surface); border: 1px solid var(--w-line); border-radius: 14px; box-shadow: 0 14px 36px rgba(18, 38, 63, 0.2);
+}
+.waba-quick-q { width: 100%; height: 36px; border: 1px solid var(--w-line); border-radius: 10px; background: var(--w-surface-2); color: var(--w-ink); padding: 0 12px; font-size: 13.5px; outline: 0; box-shadow: none; }
+.waba-quick-q:focus { border-color: var(--w-green); }
+.waba-quick-list { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; max-height: 240px; overflow-y: auto; }
+.waba-quick-item { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; text-align: left; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--w-ink); cursor: pointer; }
+.waba-quick-item:hover { background: var(--w-surface-2); }
+.waba-quick-item b { font-size: 13px; }
+.waba-quick-item span { font-size: 12.5px; color: var(--w-ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (max-width: 768px) {
+	.waba-away span:last-child { display: none; }
+	.waba-away { padding: 0 12px; }
+	.waba-quick { left: 10px; }
+	.waba-bubble.note { max-width: 90%; }
+	.waba-ctab-hint { display: none; }
+}
+
+/* the chat header holds up to four buttons: the name keeps a readable width and the buttons drop to their own row when short of room */
+.waba-th-head { flex-wrap: wrap; row-gap: 10px; }
+.waba-th-id { flex: 1 1 250px; min-width: 200px; }
+.waba-th-actions { margin-left: auto; }
+.waba-th-assign svg { margin-right: 1px; }
+@media (max-width: 768px) {
+	/* phone: Transfer and Mark done keep their words, the two lesser buttons shrink to icons so the header stays short */
+	.waba-btn-secondary .waba-btn-text { display: none; }
+	.waba-btn-secondary { padding: 0 11px; }
+	.waba-th-actions { flex-wrap: nowrap; gap: 6px; }
+}
+.waba-th-actions .waba-btn { white-space: nowrap; }
+
+/* the top bar sits above the two panels so the number list (and anything else it opens) is never hidden behind them */
+.waba-shell > .waba-topbar { z-index: 6; }

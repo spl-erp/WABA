@@ -69,7 +69,7 @@ class TestMerge(unittest.TestCase):
 
 	def test_a_missing_link_goes_under_its_own_card(self):
 		rows = spec.link_rows()
-		without = [r for r in rows if r.get("label") != "Numbers"]
+		without = [r for r in rows if r.get("label") != "Quick Replies"]
 		merged = spec.merge_links(without, rows)
 		labels = [r["label"] for r in merged]
 		self.assertEqual(labels, [r["label"] for r in rows])
@@ -139,7 +139,7 @@ class TestInboxPage(unittest.TestCase):
 	def test_page_definition(self):
 		d = json.loads(self.read(self.PAGE, "waba_inbox.json"))
 		self.assertEqual((d["doctype"], d["name"], d["page_name"], d["module"], d["standard"]), ("Page", "waba-inbox", "waba-inbox", "Waba", "Yes"))
-		self.assertEqual({r["role"] for r in d["roles"]}, {"Waba Admin", "Waba Supervisor", "System Manager"})
+		self.assertEqual({r["role"] for r in d["roles"]}, {"Waba Admin", "Waba Supervisor", "Waba Agent", "System Manager"})
 
 	def test_loader_registers_the_page_and_requests_versioned_assets(self):
 		js = self.read(self.PAGE, "waba_inbox.js")
@@ -165,8 +165,11 @@ class TestInboxPage(unittest.TestCase):
 			self.assertTrue(hasattr(importlib.import_module(module), func), dotted)
 
 	def test_the_realtime_event_name_matches_what_the_server_publishes(self):
-		for path in ("inbound.py", "status_updates.py"):
-			self.assertIn('"waba_inbox"', self.read(os.path.dirname(__file__), "..", path), path)
+		self.assertIn('"waba_inbox"', self.read(os.path.dirname(__file__), "..", "assignment.py"))
+		for path in ("inbound.py", "status_updates.py"):  # both send it only through assignment.notify (to the right people)
+			source = self.read(os.path.dirname(__file__), "..", path)
+			self.assertIn("assignment.notify(", source, path)
+			self.assertNotIn("publish_realtime", source, path)
 
 	def test_the_page_never_scrolls_its_container_with_scrollIntoView(self):
 		self.assertNotIn("scrollIntoView", self.read(self.PUBLIC, "js", "waba_inbox_app.js"))

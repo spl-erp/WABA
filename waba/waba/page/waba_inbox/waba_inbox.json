@@ -4,7 +4,7 @@
  "doctype": "Page",
  "icon": "message-circle",
  "idx": 0,
- "modified": "2026-10-28 20:00:00.000000",
+ "modified": "2026-10-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "waba-inbox",
@@ -16,6 +16,9 @@
   },
   {
    "role": "Waba Supervisor"
+  },
+  {
+   "role": "Waba Agent"
   },
   {
    "role": "System Manager"

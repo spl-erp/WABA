@@ -1,0 +1,101 @@
+{
+ "actions": [],
+ "creation": "2026-10-29 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "scope",
+  "team",
+  "language",
+  "body"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "scope",
+   "fieldtype": "Select",
+   "label": "Who can use it",
+   "options": "Everyone\nTeam\nMe",
+   "default": "Everyone",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "team",
+   "fieldtype": "Link",
+   "label": "Team",
+   "options": "Waba Team",
+   "depends_on": "eval:doc.scope=='Team'",
+   "mandatory_depends_on": "eval:doc.scope=='Team'",
+   "description": "The team and every team below it can use this reply."
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "description": "Optional, for example Hindi."
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Text",
+   "label": "Message",
+   "reqd": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-29 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Quick Reply",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Agent",
+   "read": 1
+  },
+  {
+   "role": "Waba Agent",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "if_owner": 1
+  }
+ ],
+ "autoname": "hash",
+ "naming_rule": "Random",
+ "title_field": "title"
+}

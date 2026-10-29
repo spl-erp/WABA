@@ -1,7 +1,8 @@
 /* The alert logic. Pure decisions come first (tested offline in Node); the browser part below only runs in the Desk.
  *
- * Source of events: the content-free realtime message "waba_inbox" ({conversation, kind}). Only kind "message" (a new
- * customer message) alerts; delivery ticks never do. The text shown is read with frappe.db.get_value, so it passes the
+ * Source of events: the content-free realtime message "waba_inbox" ({conversation, kind}), which the server sends only to
+ * the people who may see that conversation. Only kind "message" (a new customer message) and "handed_over" (a transfer to
+ * you) alert; delivery ticks, notes and assignments never do. The text shown is read with frappe.db.get_value, so it passes the
  * normal permission check. Settings are per browser (localStorage). */
 (function (root, factory) {
 	const core = factory();
@@ -10,6 +11,8 @@
 })(typeof self !== "undefined" ? self : this, function () {
 	const KEY = "waba_alerts_v1";
 	const DEFAULTS = { sound: true, desktop: false };
+	// a new customer message, or a conversation handed to this person (sent only to them). Ticks and notes never alert.
+	const ALERT_KINDS = ["message", "handed_over"];
 
 	/** Settings from stored text, filling in anything missing or malformed. */
 	function readPrefs(text) {
@@ -28,7 +31,7 @@
 	 * Returns null (do nothing) or {sound, toast, desktop, count}.
 	 */
 	function decide(ctx) {
-		if (!ctx || ctx.kind !== "message" || !ctx.conversation) return null;
+		if (!ctx || !ALERT_KINDS.includes(ctx.kind) || !ctx.conversation) return null;
 		const inbox = ctx.inbox && ctx.inbox.visible ? ctx.inbox : null;
 		const looking = !ctx.hidden && inbox && inbox.current === ctx.conversation;
 		if (looking) return null; // the person is reading this very conversation
@@ -119,7 +122,7 @@
 			root.frappe.db.get_value("Waba Conversation", data.conversation, ["customer_label", "last_message_preview"]).then((r) => {
 				const row = (r && r.message) || {};
 				const who = row.customer_label || "WhatsApp";
-				const text = row.last_message_preview || "";
+				const text = (data.kind === "handed_over" ? __("Handed over to you") + ": " : "") + (row.last_message_preview || "");
 				if (plan.toast) {
 					root.frappe.show_alert({ message: `<b>${root.frappe.utils.escape_html(who)}</b>: ${root.frappe.utils.escape_html(text)}`, indicator: "green" }, 8, { [__("Open")]: () => open(data.conversation) });
 				}

@@ -105,12 +105,38 @@ class TestInboxLib(unittest.TestCase):
 		self.assertEqual(self.lib('m.emojiSearch("zzzzqq")'), [])
 
 	def test_icons_and_marks_are_well_formed_svg(self):
-		for name in ("phone", "search", "refresh", "paperclip", "smile", "send", "link", "external", "more", "chevron", "check", "checks", "warning", "arrowdown", "arrowup", "bell", "back", "x", "copy", "clock", "info"):
+		for name in ("phone", "search", "refresh", "paperclip", "smile", "send", "link", "external", "more", "chevron", "check", "checks", "warning", "arrowdown", "arrowup", "bell", "back", "x", "copy", "clock", "info", "zap", "transfer", "done", "undo", "note", "user"):
 			svg = self.lib(f'm.icon("{name}", 16)')
 			self.assertTrue(svg.startswith("<svg") and svg.endswith("</svg>"), name)
 		self.assertEqual(self.lib('m.icon("nope")'), "")
 		self.assertIn("<svg", self.lib("m.brandMark(32)"))
 		self.assertIn("<svg", self.lib("m.verifiedBadge()"))
+
+
+	def test_timeline_merges_notes_and_events_in_time_order(self):
+		items = self.lib(
+			"""m.timeline(
+			[{name: "m1", sent_at: "2026-10-29 10:00:00"}, {name: "m2", sent_at: "2026-10-29 10:05:00"}],
+			[{name: "n1", kind: "Note", creation: "2026-10-29 10:02:00"}, {name: "e1", kind: "Event", creation: "2026-10-29 09:59:00"},
+			 {name: "n2", kind: "Note", creation: "2026-10-29 10:00:00"}]
+		).map(i => i.type + ":" + i.data.name)"""
+		)
+		self.assertEqual(items, ["event:e1", "message:m1", "note:n2", "note:n1", "message:m2"])
+
+	def test_timeline_of_nothing(self):
+		self.assertEqual(self.lib("m.timeline()"), [])
+		self.assertEqual(self.lib("m.timeline([], null)"), [])
+
+	def test_quick_reply_search(self):
+		sample = '[{title: "Greeting", body: "Hello, how can I help?"}, {title: "Price list", body: "Our prices are in the PDF"}, {title: "Bye", body: "Thank you"}]'
+		self.assertEqual(self.lib(f'm.filterQuickReplies({sample}, "").length'), 3)
+		self.assertEqual(self.lib(f'm.filterQuickReplies({sample}, "PRICE").map(r => r.title)'), ["Price list"])
+		self.assertEqual(self.lib(f'm.filterQuickReplies({sample}, "thank").map(r => r.title)'), ["Bye"])
+		self.assertEqual(self.lib(f'm.filterQuickReplies({sample}, "zzz")'), [])
+		self.assertEqual(self.lib("m.filterQuickReplies(null, 'a')"), [])
+
+	def test_a_note_is_escaped_like_any_text(self):
+		self.assertNotIn("<script", self.lib('m.linkify("<script>alert(1)</script> see https://x.test")'))
 
 
 @unittest.skipUnless(NODE, "node is not installed")
@@ -129,6 +155,11 @@ class TestAlertLogic(unittest.TestCase):
 	def test_a_tick_never_alerts(self):
 		self.assertIsNone(self.decide(kind="status"))
 		self.assertIsNone(self.decide(kind=None))
+
+	def test_a_handover_alerts_but_a_note_or_an_assignment_does_not(self):
+		self.assertIsNotNone(self.decide(kind="handed_over"))
+		for kind in ("note", "assigned", "status"):
+			self.assertIsNone(self.decide(kind=kind), kind)
 
 	def test_reading_that_conversation_is_silent(self):
 		self.assertIsNone(self.decide(inbox={"visible": True, "current": "A"}))

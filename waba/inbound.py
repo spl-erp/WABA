@@ -2,7 +2,7 @@
 
 Called by waba.api.webhook.process_event with the `value` of a `messages` change. Idempotent: a message id is stored
 once however many times Meta re-sends it, and a second worker creating the same conversation at the same moment
-loses cleanly to the unique key. Sender matching and the 24-hour window are applied here; assignment is a later release.
+loses cleanly to the unique key. Sender matching, the 24-hour window and assignment (waba.assignment) are applied here.
 """
 
 import datetime
@@ -10,7 +10,7 @@ import datetime
 import frappe
 from frappe.utils import convert_utc_to_system_timezone, now_datetime
 
-from waba import matching
+from waba import assignment, matching, parties
 from waba.rules import inbound, window
 
 
@@ -52,8 +52,26 @@ def store_messages(value, number, event):
 			continue
 		_update_conversation(conversation, m, sent_at, portfolio)
 		counts["stored"] += 1
-		frappe.publish_realtime("waba_inbox", {"conversation": conversation.name, "kind": "message"}, after_commit=True)
+		_keyword(conversation, m["body"])
+		_route(conversation, m["body"])
+		assignment.notify(conversation, "message")
 	return counts
+
+
+def _keyword(conversation, body):
+	"""STOP / START from the customer. A failure here must never lose the stored message."""
+	try:
+		parties.handle_keyword(conversation, body)
+	except Exception:
+		frappe.log_error(title="Waba: handling STOP / START failed")
+
+
+def _route(conversation, body):
+	"""Give the conversation to someone by the number's rules. A failure here must never lose the stored message."""
+	try:
+		assignment.assign(conversation, body)
+	except Exception:
+		frappe.log_error(title="Waba: assigning a conversation failed")
 
 
 def _conversation(key, number, m):

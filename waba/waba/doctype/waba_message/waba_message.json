@@ -19,6 +19,7 @@
   "event",
   "sent_by",
   "waba_template",
+  "business_initiated",
   "delivery_section",
   "delivered_at",
   "read_at",
@@ -136,6 +137,13 @@
    "read_only": 1
   },
   {
+   "fieldname": "business_initiated",
+   "fieldtype": "Check",
+   "label": "Business Started The Conversation",
+   "read_only": 1,
+   "description": "A template sent while the customer's 24-hour window was closed. These count against Meta's daily limit."
+  },
+  {
    "fieldname": "delivery_section",
    "fieldtype": "Section Break",
    "label": "Delivery"
@@ -171,7 +179,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-28 19:00:00.000000",
+ "modified": "2026-10-29 15:30:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Message",

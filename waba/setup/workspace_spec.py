@@ -20,7 +20,11 @@ SECTIONS = [
 	),
 	(
 		"Numbers and people",
-		[("Waba Number", "Numbers", "Each business number, its agents and routing rules")],
+		[
+			("Waba Number", "Numbers", "Each business number, its agents and routing rules"),
+			("Waba Team", "Teams", "The organisation tree: who sees which conversations, and which numbers each team owns"),
+			("Waba Quick Reply", "Quick Replies", "Saved answers agents insert from the reply box"),
+		],
 	),
 	(
 		"Messaging",

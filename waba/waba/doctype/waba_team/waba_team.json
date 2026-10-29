@@ -1,0 +1,134 @@
+{
+ "actions": [],
+ "creation": "2026-10-29 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "team_name",
+  "parent_waba_team",
+  "is_group",
+  "numbers_section",
+  "numbers",
+  "members_section",
+  "members",
+  "lft",
+  "rgt",
+  "old_parent"
+ ],
+ "fields": [
+  {
+   "fieldname": "team_name",
+   "fieldtype": "Data",
+   "label": "Team Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "parent_waba_team",
+   "fieldtype": "Link",
+   "label": "Parent Team",
+   "options": "Waba Team",
+   "in_list_view": 1,
+   "ignore_user_permissions": 1,
+   "description": "Leave empty only for the top level (Common)."
+  },
+  {
+   "fieldname": "is_group",
+   "fieldtype": "Check",
+   "label": "Has teams below",
+   "default": "0",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "numbers_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp numbers this team owns"
+  },
+  {
+   "fieldname": "numbers",
+   "fieldtype": "Table",
+   "label": "Numbers",
+   "options": "Waba Team Number",
+   "description": "A Lead of this team (or above) sees every conversation on these numbers, assigned or not."
+  },
+  {
+   "fieldname": "members_section",
+   "fieldtype": "Section Break",
+   "label": "People"
+  },
+  {
+   "fieldname": "members",
+   "fieldtype": "Table",
+   "label": "Members",
+   "options": "Waba Team Member"
+  },
+  {
+   "fieldname": "lft",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "lft",
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "rgt",
+   "fieldtype": "Int",
+   "hidden": 1,
+   "label": "rgt",
+   "no_copy": 1,
+   "print_hide": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "old_parent",
+   "fieldtype": "Data",
+   "hidden": 1,
+   "label": "old_parent",
+   "no_copy": 1,
+   "print_hide": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-29 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Team",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:team_name",
+ "naming_rule": "By fieldname",
+ "is_tree": 1,
+ "nsm_parent_field": "parent_waba_team",
+ "title_field": "team_name",
+ "search_fields": "parent_waba_team",
+ "show_name_in_global_search": 1,
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1
+  },
+  {
+   "role": "Waba Agent",
+   "read": 1
+  }
+ ]
+}

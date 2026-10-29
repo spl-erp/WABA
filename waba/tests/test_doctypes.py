@@ -21,7 +21,9 @@ CORE_DOCTYPES = {"User", "DocType"}
 EXPECTED = {
 	"Waba Portfolio", "Waba Meta App", "Waba Account", "Waba Number", "Waba Agent Access", "Waba Routing Rule", "Waba Webhook Event",
 	"Waba Identity", "Waba Conversation", "Waba Message", "Waba Template",
+	"Waba Team", "Waba Team Number", "Waba Team Member", "Waba Note", "Waba Quick Reply",
 }
+CHILD_TABLES = ("Waba Agent Access", "Waba Routing Rule", "Waba Team Number", "Waba Team Member")
 SECRET_FIELDS = {"Waba Portfolio": {"access_token"}, "Waba Meta App": {"app_secret", "verify_token"}}
 
 
@@ -94,17 +96,74 @@ class TestDefinitions(unittest.TestCase):
 					)
 
 	def test_child_tables_are_child_tables_without_own_permissions(self):
-		for name in ("Waba Agent Access", "Waba Routing Rule"):
+		for name in CHILD_TABLES:
 			d = DOCTYPES[name][1]
 			self.assertEqual(d["istable"], 1)
 			self.assertEqual(d["permissions"], [])
 		for name, (_folder, d) in DOCTYPES.items():
-			if name not in ("Waba Agent Access", "Waba Routing Rule"):
+			if name not in CHILD_TABLES:
 				self.assertFalse(d.get("istable"), name)
 
 	def test_a_table_field_exists_for_each_child_doctype(self):
 		self.assertEqual(fields_of("Waba Number")["agents"]["options"], "Waba Agent Access")
 		self.assertEqual(fields_of("Waba Number")["routing_rules"]["options"], "Waba Routing Rule")
+
+
+class TestTeamwork(unittest.TestCase):
+	def test_the_team_is_a_tree_with_numbers_and_members(self):
+		d = DOCTYPES["Waba Team"][1]
+		self.assertEqual((d["is_tree"], d["nsm_parent_field"]), (1, "parent_waba_team"))
+		self.assertEqual(fields_of("Waba Team")["numbers"]["options"], "Waba Team Number")
+		self.assertEqual(fields_of("Waba Team")["members"]["options"], "Waba Team Member")
+		self.assertEqual(fields_of("Waba Team")["parent_waba_team"]["options"], "Waba Team")
+
+	def test_team_member_roles_are_the_rules_roles(self):
+		from waba.rules import visibility
+
+		options = fields_of("Waba Team Member")["role"]["options"].split("\n")
+		self.assertEqual(set(options), {visibility.AGENT, visibility.LEAD})
+
+	def test_conversation_records_why_it_was_assigned(self):
+		for name in ("assigned_at", "assigned_reason", "assigned_trail", "waiting_since", "alerted_at"):
+			self.assertEqual(fields_of("Waba Conversation")[name].get("read_only"), 1, name)
+
+	def test_notes_are_never_editable_by_agents_in_the_desk(self):
+		roles = {p["role"] for p in DOCTYPES["Waba Note"][1]["permissions"]}
+		self.assertNotIn("Waba Agent", roles)  # agents write notes through the inbox, which checks visibility
+		for p in DOCTYPES["Waba Note"][1]["permissions"]:
+			self.assertEqual(p.get("write", 0), 0)
+
+	def test_agents_may_read_conversations_so_the_alert_can_name_the_customer(self):
+		perms = {p["role"]: p for p in DOCTYPES["Waba Conversation"][1]["permissions"]}
+		self.assertEqual(perms["Waba Agent"], {"role": "Waba Agent", "read": 1})  # read only; the hooks narrow it to their own
+
+	def test_agents_cannot_write_team_configuration(self):
+		for p in DOCTYPES["Waba Team"][1]["permissions"]:
+			if p["role"] in ("Waba Agent", "Waba Supervisor"):
+				self.assertEqual(p.get("write", 0), 0)
+
+	def test_quick_reply_scopes(self):
+		self.assertEqual(fields_of("Waba Quick Reply")["scope"]["options"], "Everyone\nTeam\nMe")
+		self.assertEqual(fields_of("Waba Quick Reply")["team"]["options"], "Waba Team")
+
+	def test_row_level_permission_hooks_are_registered_for_each_record_that_holds_chats(self):
+		import waba.hooks as hooks
+
+		for doctype in ("Waba Conversation", "Waba Message", "Waba Note"):
+			self.assertIn(doctype, hooks.permission_query_conditions)
+			self.assertIn(doctype, hooks.has_permission)
+		for path in list(hooks.permission_query_conditions.values()) + list(hooks.has_permission.values()):
+			module, func = path.rsplit(".", 1)
+			self.assertTrue(hasattr(importlib.import_module(module), func), path)
+
+	def test_scheduler_runs_assignment_jobs(self):
+		import waba.hooks as hooks
+
+		jobs = hooks.scheduler_events["cron"]["*/2 * * * *"]
+		for path in ("waba.assignment.assign_waiting", "waba.assignment.alert_unanswered"):
+			self.assertIn(path, jobs)
+			module, func = path.rsplit(".", 1)
+			self.assertTrue(hasattr(importlib.import_module(module), func), path)
 
 
 class TestSecretsAndPermissions(unittest.TestCase):

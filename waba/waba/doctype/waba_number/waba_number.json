@@ -35,6 +35,7 @@
   "default_max_open",
   "column_break_nu4",
   "visibility_mode",
+  "unanswered_alert_minutes",
   "agents_section",
   "agents",
   "rules_section",
@@ -234,6 +235,13 @@
    "default": "Own conversations only"
   },
   {
+   "fieldname": "unanswered_alert_minutes",
+   "fieldtype": "Int",
+   "label": "Alert Supervisors After (Minutes)",
+   "default": "15",
+   "description": "When a customer message is still unanswered after this long, the Leads who oversee this number are told. 0 turns it off."
+  },
+  {
    "fieldname": "agents_section",
    "fieldtype": "Section Break",
    "label": "Agents"
@@ -259,7 +267,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-28 12:00:00.000000",
+ "modified": "2026-10-29 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Number",
