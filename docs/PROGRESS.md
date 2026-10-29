@@ -7,9 +7,10 @@ Plan: 12 chunks, each shown on UAT before the next starts. Sizes are relative (S
 |---|---|---|---|---|---|
 | C1 | Setup screens | Verified on UAT (15 checks pass), awaiting owner acceptance | Waba workspace; create Portfolio, Meta App, Account, Number, Agent Access, Routing Rule; validation messages | Docs confirmed in words | S |
 | C2 | Connect Meta | Verified on UAT offline (19 checks pass); live Meta test pending |  Webhook URL and verify token; Meta "Verify" succeeds; Test connection, Sync numbers; raw events logged | Meta test app and company test number | M |
-| C3 | Conversations (read-only) | Verified on UAT (22 checks pass), awaiting acceptance | Messages and Conversations lists; inbound text on the right record or in Triage; window state | Rule for unknown senders | M |
-| C4 | Send and templates | Not started | Send inside the window; sent/delivered/read ticks; failures in plain words; Sync templates | None | M |
-| C5 | The Inbox | Not started | The real inbox page with live updates, reply box, window indicator, template picker | None | L |
+| C3 | Conversations (read-only) | Accepted | Messages and Conversations lists; inbound text on the right record or in Triage; window state | Rule for unknown senders | M |
+| C4 | Send and templates | Accepted (real Meta test postponed by the owner) | Send inside the window; sent/delivered/read ticks; failures in plain words; Sync templates | None | M |
+| C5 | The Inbox | Verified on UAT (31 checks + browser walkthrough), awaiting acceptance | The real inbox page with live updates, reply box, window indicator, template picker | None | L |
+| C5b | Chat screen redesign and extras | Built and checked on UAT in light/dark and desktop/tablet/phone; awaiting owner acceptance | New look as the owner shows it; new-message alerts anywhere in the ERP (notice with Open button, tone, unread count in the tab title, optional desktop notification); older messages, clickable links, reply shows the message it answers; emoji picker; search inside a chat (/ key). Attach button is shown but disabled until C9; the customer side panel comes after C6 | The owner's reference screenshots | M |
 | C6 | Routing and teamwork | Not started | Assignment rules, away/capacity, transfer, done, notes, quick replies, own-only and manager visibility | None | L |
 | C7 | WhatsApp from Lead / Contact / Customer | Not started | Button and dialog on the forms, timeline, first contact by template, consent checks | Where consent is stored | M |
 | C8 | Reminders and scheduled follow-ups | Not started | Set a reminder or scheduled message; it fires at the time with re-checks | None | S |

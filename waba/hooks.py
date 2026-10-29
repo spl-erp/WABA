@@ -272,5 +272,20 @@ app_license = "mit"
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
 
+before_install = "waba.setup.install.ensure_roles"
 after_install = "waba.setup.install.execute"
+# the inbox page names the roles, so they must exist before the pages and doctypes are synced
+before_migrate = ["waba.setup.install.ensure_roles"]
 after_migrate = ["waba.setup.install.execute"]
+
+scheduler_events = {
+	"cron": {
+		"*/2 * * * *": ["waba.api.webhook.retry_waiting"],
+	},
+}
+
+# new-message alerts on every Desk page (a loader that does nothing for users without a Waba role)
+app_include_js = ["/assets/waba/js/waba_alerts.js"]
+
+# tells the browser whether this user gets the new-message alerts (waba.boot)
+boot_session = "waba.boot.boot_session"

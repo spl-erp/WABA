@@ -1,0 +1,26 @@
+{
+ "creation": "2026-10-28 20:00:00.000000",
+ "docstatus": 0,
+ "doctype": "Page",
+ "icon": "message-circle",
+ "idx": 0,
+ "modified": "2026-10-28 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "waba-inbox",
+ "owner": "Administrator",
+ "page_name": "waba-inbox",
+ "roles": [
+  {
+   "role": "Waba Admin"
+  },
+  {
+   "role": "Waba Supervisor"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "standard": "Yes",
+ "title": "WhatsApp Inbox"
+}

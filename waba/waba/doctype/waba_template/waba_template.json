@@ -1,0 +1,197 @@
+{
+ "actions": [],
+ "creation": "2026-10-28 19:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "fields": [
+  {
+   "fieldname": "template_key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Template",
+   "read_only": 1,
+   "in_list_view": 1,
+   "columns": 3
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Link",
+   "label": "WhatsApp Account",
+   "options": "Waba Account",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "APPROVED templates can be sent. PENDING, REJECTED, PAUSED and DISABLED cannot."
+  },
+  {
+   "fieldname": "column_break_tp1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "template_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "language",
+   "fieldtype": "Data",
+   "label": "Language",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "label": "Category",
+   "options": "\nMARKETING\nUTILITY\nAUTHENTICATION",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Marketing costs about 7.5 times a utility message."
+  },
+  {
+   "fieldname": "content_section",
+   "fieldtype": "Section Break",
+   "label": "Content"
+  },
+  {
+   "fieldname": "header_format",
+   "fieldtype": "Data",
+   "label": "Header Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "header_text",
+   "fieldtype": "Data",
+   "label": "Header",
+   "read_only": 1
+  },
+  {
+   "fieldname": "body_text",
+   "fieldtype": "Text",
+   "label": "Body",
+   "read_only": 1,
+   "description": "{{1}}, {{2}} ... are filled in when the template is sent."
+  },
+  {
+   "fieldname": "footer_text",
+   "fieldtype": "Data",
+   "label": "Footer",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_tp2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "variable_count",
+   "fieldtype": "Int",
+   "label": "Variables",
+   "read_only": 1
+  },
+  {
+   "fieldname": "button_count",
+   "fieldtype": "Int",
+   "label": "Buttons",
+   "read_only": 1
+  },
+  {
+   "fieldname": "rejected_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejected Because",
+   "read_only": 1
+  },
+  {
+   "fieldname": "meta_section",
+   "fieldtype": "Section Break",
+   "label": "From Meta",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "meta_template_id",
+   "fieldtype": "Data",
+   "label": "Meta Template ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_synced",
+   "fieldtype": "Datetime",
+   "label": "Last Synced",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-10-28 19:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Template",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "autoname": "field:template_key",
+ "naming_rule": "By fieldname",
+ "title_field": "title",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1,
+   "report": 1
+  }
+ ],
+ "field_order": [
+  "template_key",
+  "title",
+  "account",
+  "status",
+  "column_break_tp1",
+  "template_name",
+  "language",
+  "category",
+  "content_section",
+  "header_format",
+  "header_text",
+  "body_text",
+  "footer_text",
+  "column_break_tp2",
+  "variable_count",
+  "button_count",
+  "rejected_reason",
+  "meta_section",
+  "meta_template_id",
+  "last_synced"
+ ]
+}

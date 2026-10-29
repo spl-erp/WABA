@@ -20,7 +20,7 @@ FRAPPE_DOCTYPE_DIR = os.path.join(os.path.dirname(frappe.__file__), "core", "doc
 CORE_DOCTYPES = {"User", "DocType"}
 EXPECTED = {
 	"Waba Portfolio", "Waba Meta App", "Waba Account", "Waba Number", "Waba Agent Access", "Waba Routing Rule", "Waba Webhook Event",
-	"Waba Identity", "Waba Conversation", "Waba Message",
+	"Waba Identity", "Waba Conversation", "Waba Message", "Waba Template",
 }
 SECRET_FIELDS = {"Waba Portfolio": {"access_token"}, "Waba Meta App": {"app_secret", "verify_token"}}
 

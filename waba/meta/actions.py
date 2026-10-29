@@ -95,3 +95,45 @@ def sync_numbers(account):
 	return _("{0} new (switched off until you set them up), {1} updated, {2} skipped.").format(
 		len(created), len(updated), len(skipped)
 	)
+
+
+@frappe.whitelist(methods=["POST"])
+def sync_templates(account):
+	from waba.rules.outbound import variable_count
+
+	doc, token, version = _context(account)
+	try:
+		items = graph.list_templates(token, doc.waba_id, version)
+	except graph.GraphError as e:
+		_failed(doc, e)
+
+	created = updated = 0
+	seen = set()
+	for item in items:
+		values = graph.template_values(item)
+		if not values["template_name"] or not values["language"]:
+			continue
+		key = f"{doc.name}|{values['template_name']}|{values['language']}"
+		seen.add(key)
+		values.update(
+			{
+				"title": f"{values['template_name']} ({values['language']})",
+				"account": doc.name,
+				"variable_count": variable_count(values["body_text"]),
+				"last_synced": now_datetime(),
+			}
+		)
+		if frappe.db.exists("Waba Template", key):
+			frappe.db.set_value("Waba Template", key, values, update_modified=False)
+			updated += 1
+		else:
+			frappe.get_doc({"doctype": "Waba Template", "template_key": key, **values}).insert(ignore_permissions=True)
+			created += 1
+
+	removed = 0
+	for name in frappe.get_all("Waba Template", filters={"account": doc.name, "status": ["!=", "DELETED"]}, pluck="name"):
+		if name not in seen:
+			frappe.db.set_value("Waba Template", name, {"status": "DELETED", "last_synced": now_datetime()}, update_modified=False)
+			removed += 1
+	doc.db_set({"last_checked": now_datetime(), "last_error": None}, update_modified=False)
+	return _("{0} new, {1} updated, {2} no longer at Meta.").format(created, updated, removed)

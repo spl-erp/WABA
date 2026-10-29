@@ -109,6 +109,9 @@ class TestSidebar(unittest.TestCase):
 				continue
 			if item["link_type"] == "Workspace":
 				self.assertEqual(item["link_to"], spec.WORKSPACE)
+			elif item["link_type"] == "Page":
+				folder = item["link_to"].replace("-", "_")
+				self.assertTrue(os.path.exists(os.path.join(os.path.dirname(self.PATH), "..", "..", "page", folder, f"{folder}.json")), item["label"])
 			else:
 				self.assertIn(item["link_to"], SHIPPED, item["label"])
 
@@ -123,3 +126,61 @@ class TestSidebar(unittest.TestCase):
 		self.assertEqual(len(labels), len(set(labels)))
 		reachable = {i["link_to"] for i in items}
 		self.assertTrue({d for _t, rows in spec.SECTIONS for d, _l, _x in rows} <= reachable)
+
+
+class TestInboxPage(unittest.TestCase):
+	PAGE = os.path.join(os.path.dirname(__file__), "..", "waba", "page", "waba_inbox")
+	PUBLIC = os.path.join(os.path.dirname(__file__), "..", "public")
+
+	def read(self, *parts):
+		with open(os.path.join(*parts), encoding="utf-8") as f:
+			return f.read()
+
+	def test_page_definition(self):
+		d = json.loads(self.read(self.PAGE, "waba_inbox.json"))
+		self.assertEqual((d["doctype"], d["name"], d["page_name"], d["module"], d["standard"]), ("Page", "waba-inbox", "waba-inbox", "Waba", "Yes"))
+		self.assertEqual({r["role"] for r in d["roles"]}, {"Waba Admin", "Waba Supervisor", "System Manager"})
+
+	def test_loader_registers_the_page_and_requests_versioned_assets(self):
+		js = self.read(self.PAGE, "waba_inbox.js")
+		self.assertIn('frappe.pages["waba-inbox"].on_page_load', js)
+		self.assertIn("waba.api.inbox.assets_version", js)
+		for asset in ("css/waba_inbox.css", "js/waba_inbox_lib.js", "js/waba_inbox_app.js"):
+			self.assertIn(asset, js)
+			self.assertTrue(os.path.exists(os.path.join(self.PUBLIC, *asset.split("/"))), asset)
+
+	def test_app_script_listens_for_the_realtime_event_and_calls_the_server(self):
+		js = self.read(self.PUBLIC, "js", "waba_inbox_app.js")
+		self.assertIn('"waba_inbox"', js)
+		self.assertIn("window.WabaInbox = WabaInbox", js)
+		for method in ("waba.api.inbox.conversations", "waba.api.inbox.thread", "waba.api.inbox.summary", "waba.api.send.templates_for", "waba.api.send.mark_read"):
+			self.assertIn(method, js)
+
+	def test_every_server_method_the_page_calls_exists(self):
+		import importlib
+		import re
+		source = self.read(self.PAGE, "waba_inbox.js") + self.read(self.PUBLIC, "js", "waba_inbox_app.js")
+		for dotted in set(re.findall(r"waba\.api\.[a-z_]+\.[a-z_]+", source)):
+			module, func = dotted.rsplit(".", 1)
+			self.assertTrue(hasattr(importlib.import_module(module), func), dotted)
+
+	def test_the_realtime_event_name_matches_what_the_server_publishes(self):
+		for path in ("inbound.py", "status_updates.py"):
+			self.assertIn('"waba_inbox"', self.read(os.path.dirname(__file__), "..", path), path)
+
+	def test_the_page_never_scrolls_its_container_with_scrollIntoView(self):
+		self.assertNotIn("scrollIntoView", self.read(self.PUBLIC, "js", "waba_inbox_app.js"))
+
+	def test_no_mock_data_in_the_page_code(self):
+		js = self.read(self.PUBLIC, "js", "waba_inbox_app.js")
+		for fake in ("Demo ", "Sample Customer", "New Customer", "lorem", "+91 98"):
+			self.assertNotIn(fake, js, fake)
+
+	def test_the_page_css_is_scoped_to_the_page_so_the_sidebar_is_untouched(self):
+		import re
+		css = re.sub(r"/\*.*?\*/", "", self.read(self.PUBLIC, "css", "waba_inbox.css"), flags=re.S)
+		for selector in re.findall(r"^([^{}/@][^{}]*)\{", css, flags=re.M):
+			for part in selector.split(","):
+				part = part.strip()
+				if part and not part.startswith(("from", "to", "0%", "100%", "@")):
+					self.assertTrue(part.startswith(("#page-waba-inbox", ".waba-", "[data-theme=\"dark\"] .waba-")), part)

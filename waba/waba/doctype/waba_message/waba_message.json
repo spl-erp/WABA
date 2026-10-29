@@ -16,17 +16,25 @@
   "body_section",
   "body",
   "reply_to_message_id",
-  "event"
+  "event",
+  "sent_by",
+  "waba_template",
+  "delivery_section",
+  "delivered_at",
+  "read_at",
+  "column_break_ms2",
+  "error_code",
+  "error_message"
  ],
  "fields": [
   {
    "fieldname": "message_id",
    "fieldtype": "Data",
    "label": "WhatsApp Message ID",
-   "reqd": 1,
+   "reqd": 0,
    "unique": 1,
    "read_only": 1,
-   "description": "Meta's ID. Unique: a message is stored once however often Meta re-sends it."
+   "description": "Meta's ID, known once Meta has accepted the message. Unique: a message is stored once however often Meta re-sends it."
   },
   {
    "fieldname": "preview",
@@ -70,7 +78,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Received\nSent\nDelivered\nRead\nFailed",
+   "options": "Queued\nReceived\nSent\nDelivered\nRead\nFailed",
    "default": "Received",
    "read_only": 1,
    "in_standard_filter": 1
@@ -112,11 +120,58 @@
    "label": "Webhook Event",
    "options": "Waba Webhook Event",
    "read_only": 1
+  },
+  {
+   "fieldname": "sent_by",
+   "fieldtype": "Link",
+   "label": "Sent By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "waba_template",
+   "fieldtype": "Link",
+   "label": "Template",
+   "options": "Waba Template",
+   "read_only": 1
+  },
+  {
+   "fieldname": "delivery_section",
+   "fieldtype": "Section Break",
+   "label": "Delivery"
+  },
+  {
+   "fieldname": "delivered_at",
+   "fieldtype": "Datetime",
+   "label": "Delivered At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "read_at",
+   "fieldtype": "Datetime",
+   "label": "Read At",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ms2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "error_code",
+   "fieldtype": "Data",
+   "label": "Meta Error Code",
+   "read_only": 1
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "What Went Wrong",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-28 18:00:00.000000",
+ "modified": "2026-10-28 19:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Message",

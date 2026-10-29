@@ -52,6 +52,7 @@ def store_messages(value, number, event):
 			continue
 		_update_conversation(conversation, m, sent_at, portfolio)
 		counts["stored"] += 1
+		frappe.publish_realtime("waba_inbox", {"conversation": conversation.name, "kind": "message"}, after_commit=True)
 	return counts
 
 

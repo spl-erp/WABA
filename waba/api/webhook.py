@@ -136,8 +136,10 @@ def process_event(event):
 			notes.append("No WhatsApp Account is set up for this WABA ID on this Meta app.")
 		else:
 			notes += _store_message_changes(payload, account, doc.name)
-			if summary["status_count"]:
-				notes.append("Status updates are applied in a later release.")
+			status_notes, waiting = _apply_status_changes(payload)
+			notes += status_notes
+			if waiting:
+				status = "Waiting"
 		doc.db_set(
 			{"status": status, "waba_account": account, "waba_number": number, "note": " ".join(notes) or None},
 			update_modified=False,
@@ -147,6 +149,44 @@ def process_event(event):
 	except Exception:
 		doc.db_set({"status": "Failed", "note": "Could not be examined; see the Error Log."}, update_modified=False)
 		frappe.log_error(title="Waba: webhook event could not be examined")
+
+
+def _apply_status_changes(payload):
+	from waba import status_updates
+
+	updated = unchanged = 0
+	waiting = []
+	for entry in payload.get("entry") or []:
+		for change in (entry.get("changes") or []) if isinstance(entry, dict) else []:
+			value = change.get("value") if isinstance(change, dict) and isinstance(change.get("value"), dict) else None
+			if not value or change.get("field") != "messages" or not value.get("statuses"):
+				continue
+			result = status_updates.apply_statuses(value)
+			updated += result["updated"]
+			unchanged += result["unchanged"]
+			waiting += result["waiting"]
+	notes = []
+	if updated or unchanged:
+		notes.append(f"{updated} delivery update(s) applied" + (f", {unchanged} needed no change." if unchanged else "."))
+	if waiting:
+		notes.append(f"Waiting for {len(waiting)} message(s) the ERP has not saved yet.")
+	return notes, waiting
+
+
+def retry_waiting():
+	"""Scheduled every few minutes: look again at deliveries that reported on a message we did not have yet. After an
+	hour the message is taken to be one the ERP never sent, and the delivery is closed."""
+	import datetime
+
+	cutoff = now_datetime() - datetime.timedelta(hours=1)
+	for name, received_at in frappe.get_all("Waba Webhook Event", filters={"status": "Waiting"}, fields=["name", "received_at"], limit_page_length=200, as_list=True):
+		if received_at and received_at < cutoff:
+			frappe.db.set_value(
+				"Waba Webhook Event", name, {"status": "Ignored", "note": "Reported on a message this ERP never sent."}, update_modified=False
+			)
+		else:
+			frappe.db.set_value("Waba Webhook Event", name, "status", "Received", update_modified=False)
+			process_event(name)
 
 
 def _store_message_changes(payload, account, event):

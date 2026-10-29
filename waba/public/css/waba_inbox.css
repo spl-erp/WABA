@@ -1,0 +1,337 @@
+/* WhatsApp inbox. Everything is scoped to #page-waba-inbox, so the ERP sidebar and the other Desk pages are untouched.
+   Colours are variables on .waba-shell; the dark set is its own palette, not an inversion. */
+
+#page-waba-inbox .page-head { display: none !important; }
+#page-waba-inbox .layout-main-section-wrapper { margin: 0; }
+#page-waba-inbox .page-body { padding: 0; }
+#page-waba-inbox .layout-main-section { padding: 0; }
+
+.waba-shell {
+	--w-page-a: #f3f8fd;
+	--w-page-b: #eaf7f1;
+	--w-surface: #ffffff;
+	--w-surface-2: #f6f9fc;
+	--w-line: #e4eaf1;
+	--w-ink: #12263f;
+	--w-ink-2: #566880;
+	--w-ink-3: #8795a8;
+	--w-green: #25d366;
+	--w-green-d: #12945a;
+	--w-green-bg: #e2f8ec;
+	--w-green-sel: #e5f7ed;
+	--w-bubble-out: #d9f6d3;
+	--w-bubble-in: #ffffff;
+	--w-red: #c4372f;
+	--w-red-bg: #fde9e8;
+	--w-orange: #b25e09;
+	--w-orange-bg: #ffeed8;
+	--w-blue: #2f8cf4;
+	--w-chip: #eef2f7;
+	--w-shadow: 0 1px 2px rgba(18, 38, 63, 0.06), 0 6px 18px rgba(18, 38, 63, 0.05);
+	--w-wash: rgba(246, 249, 252, 0.93);
+	--w-radius: 16px;
+
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	height: calc(100vh - 8px);
+	height: calc(100dvh - 8px);
+	min-height: 380px;
+	width: 100%;
+	max-width: 100%;
+	padding: 16px 18px 18px;
+	box-sizing: border-box;
+	color: var(--w-ink);
+	background: linear-gradient(135deg, var(--w-page-a) 0%, #f8fbfe 45%, var(--w-page-b) 100%);
+	overflow: hidden;
+	overflow: clip; /* nothing may scroll the page container, not even a script */
+}
+[data-theme="dark"] .waba-shell {
+	--w-page-a: #0d1620;
+	--w-page-b: #0b1c17;
+	--w-surface: #16202b;
+	--w-surface-2: #1b2735;
+	--w-line: #25344a;
+	--w-ink: #e8eff8;
+	--w-ink-2: #a6b4c6;
+	--w-ink-3: #7b8ba1;
+	--w-green: #2bd873;
+	--w-green-d: #4be28d;
+	--w-green-bg: rgba(43, 216, 115, 0.16);
+	--w-green-sel: rgba(43, 216, 115, 0.12);
+	--w-bubble-out: #1d4a37;
+	--w-bubble-in: #1f2b3a;
+	--w-red: #ff9a90;
+	--w-red-bg: #3b2024;
+	--w-orange: #ffbd6e;
+	--w-orange-bg: #3b2e1a;
+	--w-blue: #5aa9ff;
+	--w-chip: #223044;
+	--w-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.25);
+	--w-wash: rgba(27, 39, 53, 0.94);
+}
+/* soft brand shapes in the corners */
+.waba-shell::before,
+.waba-shell::after { content: ""; position: absolute; pointer-events: none; border-radius: 50%; filter: blur(2px); z-index: 0; }
+.waba-shell::before { width: 360px; height: 360px; top: -190px; right: 8%; background: radial-gradient(circle, rgba(37, 211, 102, 0.14), transparent 70%); }
+.waba-shell::after { width: 420px; height: 420px; bottom: -240px; left: -120px; background: radial-gradient(circle, rgba(47, 140, 244, 0.1), transparent 70%); }
+.waba-shell > * { position: relative; z-index: 1; }
+
+.waba-i { flex: none; vertical-align: middle; }
+.waba-shell button { font-family: inherit; }
+.waba-shell button:focus-visible, .waba-shell a:focus-visible, .waba-shell textarea:focus-visible, .waba-shell input:focus-visible { outline: 2px solid var(--w-green); outline-offset: 2px; }
+
+/* ------------------------------------------------------------------ top bar */
+.waba-topbar { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.waba-topbar > * { min-width: 0; }
+.waba-brand-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.waba-brand-text { min-width: 0; }
+.waba-title { margin: 0; font-size: 20px; line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; color: var(--w-ink); }
+.waba-subtitle { margin: 1px 0 0; font-size: 12.5px; color: var(--w-ink-2); }
+.waba-numsel { position: relative; flex: 0 1 260px; }
+.waba-pill-btn {
+	display: inline-flex; align-items: center; gap: 10px; height: 42px; padding: 0 14px; min-width: 160px; max-width: 280px; width: 100%;
+	background: var(--w-surface); color: var(--w-ink); border: 1px solid var(--w-line); border-radius: 12px; box-shadow: var(--w-shadow);
+	font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.waba-pill-btn .waba-grow { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waba-pop {
+	position: absolute; z-index: 30; top: 48px; left: 0; min-width: 260px; max-height: 320px; overflow: auto; padding: 6px;
+	background: var(--w-surface); border: 1px solid var(--w-line); border-radius: 12px; box-shadow: 0 12px 32px rgba(18, 38, 63, 0.18);
+}
+.waba-pop-item { display: flex; width: 100%; align-items: center; gap: 8px; padding: 9px 10px; border: 0; background: transparent; color: var(--w-ink); border-radius: 8px; cursor: pointer; text-align: left; font-size: 13.5px; }
+.waba-pop-item:hover, .waba-pop-item.active { background: var(--w-green-sel); }
+.waba-pop-item small { color: var(--w-ink-3); margin-left: auto; }
+.waba-searchbox {
+	flex: 1 1 0; min-width: 120px; display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 12px; max-width: 760px;
+	background: var(--w-surface); border: 1px solid var(--w-line); border-radius: 12px; box-shadow: var(--w-shadow); color: var(--w-ink-3);
+}
+.waba-searchbox input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--w-ink); font-size: 14px; }
+.waba-searchbox input::placeholder { color: var(--w-ink-3); }
+.waba-kbd { border: 1px solid var(--w-line); border-radius: 6px; padding: 1px 7px; font-size: 12px; color: var(--w-ink-3); background: var(--w-surface-2); }
+.waba-refresh {
+	flex: none; margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; font-weight: 600; font-size: 14px;
+	background: var(--w-surface); color: var(--w-ink); border: 1px solid var(--w-line); border-radius: 12px; box-shadow: var(--w-shadow); cursor: pointer;
+}
+.waba-refresh:hover, .waba-pill-btn:hover, .waba-btn:hover { border-color: var(--w-green); }
+
+/* ------------------------------------------------------------------ two panels */
+.waba-inbox { flex: 1; min-height: 0; min-width: 0; display: grid; grid-template-columns: clamp(330px, 30%, 460px) minmax(0, 1fr); gap: 16px; }
+.waba-list, .waba-thread {
+	min-height: 0; display: flex; flex-direction: column; background: var(--w-surface); border: 1px solid var(--w-line);
+	border-radius: var(--w-radius); box-shadow: var(--w-shadow); overflow: hidden;
+}
+.waba-tabs { display: flex; gap: 6px; padding: 12px; flex-wrap: wrap; }
+.waba-tab {
+	display: inline-flex; align-items: center; gap: 6px; border: 1px solid transparent; background: var(--w-surface-2); color: var(--w-ink-2);
+	padding: 7px 13px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.waba-tab:hover { border-color: var(--w-line); }
+.waba-tab.active { background: var(--w-green-bg); color: var(--w-green-d); border-color: rgba(37, 211, 102, 0.4); }
+.waba-tab .waba-count { font-weight: 600; color: var(--w-ink-3); }
+.waba-tab.active .waba-count { color: var(--w-green-d); border: 1px solid rgba(37, 211, 102, 0.5); border-radius: 999px; padding: 0 6px; font-size: 12px; background: var(--w-surface); }
+.waba-items { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 8px; }
+.waba-row {
+	display: flex; gap: 12px; width: 100%; text-align: left; padding: 12px 10px; margin: 0 0 2px; border: 0; border-radius: 12px; background: transparent;
+	color: var(--w-ink); cursor: pointer; align-items: flex-start;
+}
+.waba-row:hover { background: var(--w-surface-2); }
+.waba-row.selected { background: var(--w-green-sel); box-shadow: inset 0 0 0 1px rgba(37, 211, 102, 0.28); }
+.waba-avatar {
+	flex: none; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 50%;
+	color: #fff; font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
+}
+.waba-avatar.lg { width: 52px; height: 52px; font-size: 17px; }
+.waba-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.waba-row-top { display: flex; align-items: center; gap: 8px; }
+.waba-row-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14.5px; }
+.waba-row-name > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waba-row.unread .waba-row-name { font-weight: 700; }
+.waba-row-time { flex: none; font-size: 12px; color: var(--w-ink-3); }
+.waba-row-phone { font-size: 12.5px; color: var(--w-ink-2); }
+.waba-row-bottom { display: flex; align-items: center; gap: 8px; }
+.waba-row-preview { flex: 1; min-width: 0; font-size: 13px; color: var(--w-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waba-badge {
+	flex: none; min-width: 22px; height: 22px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center;
+	background: var(--w-green); color: #fff; border-radius: 999px; font-size: 12px; font-weight: 700;
+}
+.waba-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.waba-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; background: var(--w-chip); color: var(--w-ink-2); }
+.waba-chip.green { background: var(--w-green-bg); color: var(--w-green-d); }
+.waba-chip.red { background: var(--w-red-bg); color: var(--w-red); }
+.waba-chip.orange { background: var(--w-orange-bg); color: var(--w-orange); }
+.waba-more { display: flex; margin: 8px auto 4px; align-items: center; gap: 8px; border: 1px solid var(--w-line); background: var(--w-surface); color: var(--w-ink); border-radius: 999px; padding: 8px 22px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: var(--w-shadow); }
+.waba-more:hover { border-color: var(--w-green); }
+.waba-empty { padding: 36px 18px; text-align: center; color: var(--w-ink-3); font-size: 14px; }
+
+/* ------------------------------------------------------------------ chat panel */
+.waba-th-head { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid var(--w-line); }
+.waba-th-id { flex: 1; min-width: 0; }
+.waba-th-name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 17px; font-weight: 700; }
+.waba-th-phone { font-size: 13.5px; color: var(--w-ink-2); margin-top: 1px; }
+.waba-th-record { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 13px; color: var(--w-blue); text-decoration: none; }
+.waba-th-record:hover { text-decoration: underline; }
+.waba-th-actions { display: flex; align-items: center; gap: 8px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.waba-btn {
+	display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--w-line);
+	background: var(--w-surface); color: var(--w-ink); font-size: 13.5px; font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.waba-btn.primary { background: var(--w-green); border-color: var(--w-green); color: #fff; }
+.waba-btn.primary:hover { filter: brightness(0.95); }
+.waba-iconbtn { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 0; background: transparent; color: var(--w-ink-2); cursor: pointer; }
+.waba-iconbtn:hover { background: var(--w-surface-2); color: var(--w-ink); }
+.waba-env { border-radius: 999px; padding: 2px 11px; font-size: 12px; font-weight: 700; background: var(--w-orange-bg); color: var(--w-orange); }
+
+.waba-banner { margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px; font-size: 13.5px; }
+.waba-banner-line { display: flex; align-items: center; gap: 10px; }
+.waba-banner-line .waba-grow { flex: 1; }
+.waba-banner.open { background: var(--w-green-bg); color: var(--w-green-d); border: 1px solid rgba(37, 211, 102, 0.25); }
+.waba-banner.closed { background: var(--w-orange-bg); color: var(--w-orange); border: 1px solid rgba(224, 138, 0, 0.25); }
+.waba-banner.done { background: var(--w-chip); color: var(--w-ink-2); border: 1px solid var(--w-line); }
+.waba-banner .waba-dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+.waba-banner .waba-chev { border: 0; background: transparent; color: inherit; cursor: pointer; display: inline-flex; padding: 2px; transition: transform 0.15s; }
+.waba-banner.expanded .waba-chev { transform: rotate(180deg); }
+.waba-banner-detail { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0, 0, 0, 0.08); font-size: 13px; line-height: 1.5; }
+.waba-banner.expanded .waba-banner-detail { display: block; }
+
+.waba-messages {
+	flex: 1; min-height: 0; overflow-y: auto; padding: 14px 18px; margin-top: 12px; background-color: var(--w-surface-2);
+	background-image: linear-gradient(var(--w-wash), var(--w-wash)), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%2325d366' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 22a7 7 0 1 1 3 5.7L16 29l1.4-4.6A7 7 0 0 1 18 22z'/%3E%3Cpath d='M82 18l6 6 8-9'/%3E%3Ccircle cx='96' cy='70' r='6'/%3E%3Cpath d='M94 70h4M96 68v4'/%3E%3Cpath d='M28 84c3-6 9-6 12 0M28 92h12'/%3E%3Cpath d='M70 100l8-8 8 8-8 8z'/%3E%3Cpath d='M56 52c4 5 10 5 14 0'/%3E%3C/g%3E%3C/svg%3E");
+	background-attachment: local;
+}
+.waba-day { display: flex; justify-content: center; margin: 14px 0 10px; }
+.waba-day span { background: var(--w-surface); color: var(--w-ink-2); border: 1px solid var(--w-line); border-radius: 999px; padding: 3px 14px; font-size: 12.5px; font-weight: 600; box-shadow: var(--w-shadow); }
+.waba-msg { display: flex; margin: 6px 0; }
+.waba-msg.out { justify-content: flex-end; }
+.waba-bubble {
+	max-width: min(560px, 78%); padding: 7px 12px 6px; border-radius: 14px; background: var(--w-bubble-in); color: var(--w-ink); box-shadow: var(--w-shadow);
+	word-wrap: break-word; overflow-wrap: anywhere; font-size: 14.5px; line-height: 1.45;
+}
+.waba-msg.in .waba-bubble { border-top-left-radius: 4px; }
+.waba-msg.out .waba-bubble { background: var(--w-bubble-out); border-top-right-radius: 4px; }
+.waba-msg.failed .waba-bubble { background: var(--w-red-bg); color: var(--w-red); border: 1px solid rgba(196, 55, 47, 0.25); }
+.waba-sender { font-size: 12px; font-weight: 700; color: var(--w-green-d); margin-bottom: 1px; }
+.waba-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--w-green-d); margin-bottom: 3px; }
+.waba-text { white-space: pre-wrap; }
+.waba-errorbox { display: flex; gap: 8px; margin-top: 6px; font-size: 12.5px; line-height: 1.4; color: var(--w-red); }
+.waba-foot { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 2px; font-size: 11.5px; color: var(--w-ink-3); }
+.waba-msg.failed .waba-foot { color: var(--w-red); justify-content: space-between; }
+.waba-foot-name { font-weight: 600; }
+.waba-foot-right { display: inline-flex; align-items: center; gap: 6px; }
+.waba-tick.grey { color: var(--w-ink-3); }
+.waba-tick.blue { color: var(--w-blue); }
+.waba-tick.red { color: var(--w-red); }
+.waba-placeholder { display: flex; flex: 1; flex-direction: column; gap: 10px; align-items: center; justify-content: center; color: var(--w-ink-3); padding: 32px; text-align: center; }
+
+/* ------------------------------------------------------------------ composer */
+.waba-composer { display: flex; align-items: flex-end; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--w-line); background: var(--w-surface); }
+.waba-circle {
+	flex: none; width: 42px; height: 42px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--w-line);
+	background: var(--w-surface-2); color: var(--w-ink-2); cursor: pointer;
+}
+.waba-circle:hover:not(:disabled) { color: var(--w-green-d); border-color: var(--w-green); }
+.waba-circle:disabled { opacity: 0.45; cursor: not-allowed; }
+.waba-inputwrap { flex: 1; min-width: 0; display: flex; align-items: center; min-height: 44px; background: var(--w-surface); border: 1px solid var(--w-line); border-radius: 22px; padding: 0 16px; }
+.waba-inputwrap:focus-within { border-color: var(--w-green); box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.15); }
+.waba-inputwrap textarea { flex: 1; width: 100%; border: 0; outline: 0; resize: none; background: transparent; color: var(--w-ink); font-size: 14.5px; line-height: 1.4; padding: 11px 0; height: 44px; max-height: 140px; box-shadow: none; }
+.waba-inputwrap textarea::placeholder { color: var(--w-ink-3); }
+.waba-inputwrap.disabled { background: var(--w-surface-2); color: var(--w-ink-3); font-size: 14px; }
+.waba-send { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 0; display: inline-flex; align-items: center; justify-content: center; background: var(--w-green); color: #fff; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35); }
+.waba-send:hover:not(:disabled) { filter: brightness(0.94); }
+.waba-send:disabled { opacity: 0.55; cursor: default; }
+.waba-back { display: none; }
+
+/* ------------------------------------------------------------------ tablet and phone */
+@media (min-width: 1021px) and (max-width: 1250px) {
+	.waba-inbox { grid-template-columns: 300px minmax(0, 1fr); gap: 12px; }
+	.waba-subtitle { display: none; }
+	.waba-pill-btn { min-width: 180px; }
+	.waba-btn .waba-btn-text { display: none; }
+	.waba-btn { padding: 0 11px; }
+}
+@media (max-width: 1020px) {
+	.waba-inbox { grid-template-columns: 1fr; }
+	.waba-inbox .waba-thread { display: none; }
+	.waba-inbox.show-thread .waba-list { display: none; }
+	.waba-inbox.show-thread .waba-thread { display: flex; }
+	.waba-shell.thread-open .waba-topbar { display: none; }
+	.waba-back { display: inline-flex; }
+	.waba-subtitle { display: none; }
+	.waba-bubble { max-width: 82%; }
+	.waba-th-head { flex-wrap: wrap; align-items: flex-start; }
+	.waba-th-actions { width: 100%; justify-content: flex-start; }
+}
+@media (max-width: 768px) {
+	.waba-shell { padding: 10px; gap: 10px; height: calc(100vh - 4px); }
+	.waba-topbar { flex-wrap: wrap; gap: 10px; }
+	.waba-brand-block { flex: 1; }
+	.waba-refresh span { display: none; }
+	.waba-refresh { margin-left: 0; padding: 0 12px; }
+	.waba-numsel { order: 3; flex: 1 1 100%; }
+	.waba-pill-btn { width: 100%; }
+	.waba-searchbox { order: 4; flex: 1 1 100%; max-width: none; }
+	.waba-th-head { flex-wrap: wrap; align-items: flex-start; padding: 10px 12px; gap: 10px; }
+	.waba-th-name { font-size: 15.5px; }
+	.waba-th-id { padding-top: 2px; }
+	.waba-th-actions { width: 100%; justify-content: flex-start; }
+	.waba-avatar.lg { width: 44px; height: 44px; font-size: 15px; }
+	.waba-bubble { max-width: 88%; }
+	.waba-banner { margin: 8px 10px 0; }
+	.waba-messages { padding: 10px 12px; }
+	.waba-composer { padding: 10px; gap: 8px; }
+}
+
+@media (max-height: 560px) {
+	.waba-shell { padding: 8px 10px 10px; gap: 8px; }
+	.waba-subtitle { display: none; }
+	.waba-th-head { padding: 8px 12px; }
+	.waba-banner { margin-top: 8px; padding: 6px 12px; }
+	.waba-messages { margin-top: 8px; }
+}
+}
+
+/* keep the five tabs on one row when the list column is narrow */
+@media (max-width: 1500px) {
+	.waba-tabs { gap: 4px; padding: 10px; flex-wrap: nowrap; }
+	.waba-tab { padding: 6px 9px; font-size: 12.5px; gap: 4px; flex: 0 1 auto; min-width: 0; }
+	.waba-tab.active .waba-count { padding: 0 5px; font-size: 11.5px; }
+}
+
+/* ------------------------------------------------------------------ emoji, quote, search, earlier messages */
+.waba-composer { position: relative; }
+.waba-emoji {
+	position: absolute; left: 14px; bottom: calc(100% + 8px); z-index: 40; width: min(340px, calc(100% - 28px)); padding: 10px;
+	background: var(--w-surface); border: 1px solid var(--w-line); border-radius: 14px; box-shadow: 0 14px 36px rgba(18, 38, 63, 0.2);
+}
+.waba-emoji-q { width: 100%; height: 36px; border: 1px solid var(--w-line); border-radius: 10px; background: var(--w-surface-2); color: var(--w-ink); padding: 0 12px; font-size: 13.5px; outline: 0; box-shadow: none; }
+.waba-emoji-q:focus { border-color: var(--w-green); }
+.waba-emoji-tabs { display: flex; gap: 4px; margin: 8px 0 6px; }
+.waba-emoji-tab { flex: 1; height: 32px; border: 0; border-radius: 8px; background: transparent; font-size: 17px; cursor: pointer; }
+.waba-emoji-tab:hover { background: var(--w-surface-2); }
+.waba-emoji-tab.active { background: var(--w-green-bg); }
+.waba-emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; max-height: 190px; overflow-y: auto; }
+.waba-emoji-item { height: 36px; border: 0; border-radius: 8px; background: transparent; font-size: 21px; line-height: 1; cursor: pointer; }
+.waba-emoji-item:hover { background: var(--w-surface-2); }
+
+.waba-quote {
+	display: flex; flex-direction: column; gap: 1px; margin: 2px 0 5px; padding: 5px 9px; border-left: 3px solid var(--w-green); border-radius: 6px;
+	background: rgba(0, 0, 0, 0.05); cursor: pointer; font-size: 12.5px; line-height: 1.35;
+}
+[data-theme="dark"] .waba-quote { background: rgba(255, 255, 255, 0.07); }
+.waba-quote b { color: var(--w-green-d); font-size: 12px; }
+.waba-quote span { color: var(--w-ink-2); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.waba-msg.flash .waba-bubble { animation: waba-flash 1.6s ease-out; }
+@keyframes waba-flash { 0%, 40% { box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.55); } 100% { box-shadow: var(--w-shadow); } }
+.waba-text a { color: var(--w-blue); text-decoration: underline; word-break: break-all; }
+.waba-messages mark { background: #ffe58a; color: #1d2b3f; border-radius: 3px; padding: 0 1px; }
+.waba-messages mark.current { background: #ffb347; outline: 2px solid rgba(255, 179, 71, 0.55); }
+
+.waba-earlier-wrap { display: flex; justify-content: center; margin: 2px 0 8px; }
+.waba-earlier-wrap .waba-more { margin: 0; }
+.waba-earlier:disabled { opacity: 0.6; cursor: progress; }
+.waba-findbar { display: flex; align-items: center; gap: 6px; margin: 10px 16px 0; padding: 4px 8px 4px 12px; border: 1px solid var(--w-line); border-radius: 12px; background: var(--w-surface); color: var(--w-ink-3); }
+.waba-findbar[hidden] { display: none; }
+.waba-findbar input { flex: 1; min-width: 0; height: 32px; border: 0; outline: 0; background: transparent; color: var(--w-ink); font-size: 14px; box-shadow: none; }
+.waba-find-count { font-size: 12.5px; color: var(--w-ink-2); white-space: nowrap; }
+@media (max-width: 768px) { .waba-findbar { margin: 8px 10px 0; } .waba-emoji { left: 10px; } }

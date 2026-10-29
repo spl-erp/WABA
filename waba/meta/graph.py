@@ -27,7 +27,7 @@ class GraphError(Exception):
 		self.http_status = http_status
 
 
-def call(token, method, path, version=None, params=None, data=None, http=None):
+def call(token, method, path, version=None, params=None, data=None, json=None, http=None):
 	url = f"{GRAPH_HOST}/{version or DEFAULT_API_VERSION}/{path.lstrip('/')}"
 	try:
 		response = (http or requests.request)(
@@ -35,6 +35,7 @@ def call(token, method, path, version=None, params=None, data=None, http=None):
 			url,
 			params=params,
 			data=data,
+			json=json,
 			headers={"Authorization": f"Bearer {token}"},
 			timeout=TIMEOUT,
 		)
@@ -115,3 +116,52 @@ def explain(error):
 	if action == "unknown":
 		return error.message
 	return f"{meaning}. ({error.message})"
+
+
+TEMPLATE_FIELDS = "id,name,language,category,status,components,rejected_reason"
+TEMPLATE_FIELDS_MINIMAL = "id,name,language,category,status,components"
+
+
+def list_templates(token, waba_id, version=None, http=None):
+	"""All message templates of the account (follows paging). Unverified field: rejected_reason."""
+	params = {"fields": TEMPLATE_FIELDS, "limit": PAGE_LIMIT}
+	items = []
+	for _page in range(MAX_PAGES):
+		try:
+			body = call(token, "GET", f"{waba_id}/message_templates", version, params=params, http=http)
+		except GraphError as e:
+			if e.code == 100 and params["fields"] != TEMPLATE_FIELDS_MINIMAL and not items:
+				params = {**params, "fields": TEMPLATE_FIELDS_MINIMAL}
+				continue
+			raise
+		items += body.get("data") or []
+		after = ((body.get("paging") or {}).get("cursors") or {}).get("after")
+		if not after or not (body.get("paging") or {}).get("next"):
+			break
+		params = {**params, "after": after}
+	return items
+
+
+def send_message(token, phone_number_id, payload, version=None, http=None):
+	"""POST a message payload (see rules/outbound.py); returns Meta's response body."""
+	return call(token, "POST", f"{phone_number_id}/messages", version, json=payload, http=http)
+
+
+def template_values(item):
+	"""Our Waba Template fields from one Meta template item."""
+	parts = {c.get("type"): c for c in item.get("components") or [] if isinstance(c, dict)}
+	header = parts.get("HEADER") or {}
+	buttons = (parts.get("BUTTONS") or {}).get("buttons") or []
+	return {
+		"meta_template_id": str(item.get("id") or ""),
+		"template_name": item.get("name"),
+		"language": item.get("language"),
+		"category": str(item.get("category") or "").upper(),
+		"status": str(item.get("status") or "").upper(),
+		"rejected_reason": item.get("rejected_reason") if item.get("rejected_reason") not in (None, "NONE") else None,
+		"header_format": header.get("format"),
+		"header_text": header.get("text") if header.get("format") == "TEXT" else None,
+		"body_text": (parts.get("BODY") or {}).get("text") or "",
+		"footer_text": (parts.get("FOOTER") or {}).get("text"),
+		"button_count": len(buttons),
+	}

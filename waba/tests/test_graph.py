@@ -19,8 +19,8 @@ class Fake:
 	def __init__(self, *responses):
 		self.responses, self.calls = list(responses), []
 
-	def __call__(self, method, url, params=None, data=None, headers=None, timeout=None):
-		self.calls.append({"method": method, "url": url, "params": params, "headers": headers, "timeout": timeout})
+	def __call__(self, method, url, params=None, data=None, json=None, headers=None, timeout=None):
+		self.calls.append({"method": method, "url": url, "params": params, "json": json, "headers": headers, "timeout": timeout})
 		return self.responses.pop(0)
 
 
@@ -92,6 +92,30 @@ class TestSubscribe(unittest.TestCase):
 		http = Fake(Resp({"success": True}))
 		self.assertTrue(graph.subscribe_app("t", "123", http=http)["success"])
 		self.assertEqual((http.calls[0]["method"], http.calls[0]["url"].rsplit("/", 2)[-2:]), ("POST", ["123", "subscribed_apps"]))
+
+
+class TestTemplatesAndSend(unittest.TestCase):
+	ITEM = {"id": 7, "name": "order_update", "language": "en", "category": "utility", "status": "approved",
+		"components": [{"type": "HEADER", "format": "TEXT", "text": "Order"}, {"type": "BODY", "text": "Hi {{1}}, order {{2}} shipped"},
+			{"type": "FOOTER", "text": "Splashjet"}, {"type": "BUTTONS", "buttons": [{"type": "QUICK_REPLY", "text": "OK"}]}]}
+
+	def test_template_values(self):
+		v = graph.template_values(self.ITEM)
+		self.assertEqual((v["template_name"], v["language"], v["category"], v["status"]), ("order_update", "en", "UTILITY", "APPROVED"))
+		self.assertEqual((v["body_text"], v["header_text"], v["footer_text"], v["button_count"]), ("Hi {{1}}, order {{2}} shipped", "Order", "Splashjet", 1))
+		self.assertIsNone(v["rejected_reason"])
+		self.assertEqual(graph.template_values({"name": "x"})["body_text"], "")
+
+	def test_list_templates_pages_and_falls_back(self):
+		http = Fake(error(100, "bad field"), Resp({"data": [self.ITEM]}))
+		self.assertEqual(len(graph.list_templates("t", "123", http=http)), 1)
+		self.assertEqual(http.calls[1]["params"]["fields"], graph.TEMPLATE_FIELDS_MINIMAL)
+
+	def test_send_message_posts_json_to_the_number(self):
+		http = Fake(Resp({"messages": [{"id": "wamid.X"}]}))
+		out = graph.send_message("t", "555", {"type": "text"}, http=http)
+		self.assertEqual(out["messages"][0]["id"], "wamid.X")
+		self.assertEqual((http.calls[0]["method"], http.calls[0]["json"], http.calls[0]["url"].endswith("/555/messages")), ("POST", {"type": "text"}, True))
 
 
 class TestExplain(unittest.TestCase):

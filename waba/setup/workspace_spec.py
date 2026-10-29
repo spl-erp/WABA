@@ -23,6 +23,10 @@ SECTIONS = [
 		[("Waba Number", "Numbers", "Each business number, its agents and routing rules")],
 	),
 	(
+		"Messaging",
+		[("Waba Template", "Templates", "Message templates as Meta has them; only approved ones can be sent")],
+	),
+	(
 		"Conversations",
 		[
 			("Waba Conversation", "Conversations", "One thread per business number and customer"),
@@ -44,6 +48,9 @@ SHORTCUTS = [
 	("Waba Webhook Event", "Webhook Events"),
 	("Waba Conversation", "Conversations"),
 ]
+
+# (page name, label): desk pages
+PAGE_SHORTCUTS = [("waba-inbox", "Inbox")]
 
 # (label, url): a saved filter on a list
 URL_SHORTCUTS = [("Triage", "/app/waba-conversation?match_state=Triage")]
@@ -84,12 +91,13 @@ def link_rows():
 
 
 def shortcut_rows():
+	pages = [{"type": "Page", "link_to": page, "label": label} for page, label in PAGE_SHORTCUTS]
 	rows = [{"type": "DocType", "link_to": d, "label": l, "doc_view": "List"} for d, l in SHORTCUTS]
-	return rows + [{"type": "URL", "url": url, "label": label} for label, url in URL_SHORTCUTS]
+	return pages + rows + [{"type": "URL", "url": url, "label": label} for label, url in URL_SHORTCUTS]
 
 
 def _shortcut_labels():
-	return [label for _d, label in SHORTCUTS] + [label for label, _u in URL_SHORTCUTS]
+	return [label for _p, label in PAGE_SHORTCUTS] + [label for _d, label in SHORTCUTS] + [label for label, _u in URL_SHORTCUTS]
 
 
 def merge_links(existing, wanted):

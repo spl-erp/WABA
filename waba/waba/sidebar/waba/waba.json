@@ -16,6 +16,14 @@
   },
   {
    "type": "Link",
+   "label": "Inbox",
+   "link_type": "Page",
+   "link_to": "waba-inbox",
+   "icon": "mail",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
    "label": "Conversations",
    "link_type": "DocType",
    "link_to": "Waba Conversation",
@@ -65,6 +73,14 @@
   },
   {
    "type": "Link",
+   "label": "Templates",
+   "link_type": "DocType",
+   "link_to": "Waba Template",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
    "label": "Meta Apps",
    "link_type": "DocType",
    "link_to": "Waba Meta App",
@@ -105,7 +121,7 @@
    "child": 1
   }
  ],
- "modified": "2026-10-28 17:00:00.000000",
+ "modified": "2026-10-28 20:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba",
