@@ -19,6 +19,8 @@ CONSENT_NO = "No"
 CONSENT_UNKNOWN = "Unknown"
 
 NOT_UTILITY = "not_utility"
+NO_MARKETING_CONSENT = "no_marketing_consent"
+MARKETING_OPTED_OUT = "marketing_opted_out"
 OPTED_OUT = "opted_out"
 NO_CONSENT = "no_consent"
 LIMIT_REACHED = "limit_reached"
@@ -28,6 +30,8 @@ DEFAULT_LIMIT = 250  # an unverified business, and what is assumed when the tier
 WARN_AT = 0.8
 
 _STOP = {"stop", "unsubscribe", "stop all", "stopall"}
+_STOP_MARKETING = {"stop promo", "stop promos", "stop promotions", "stop offers", "stop marketing"}
+_START_MARKETING = {"start promo", "start promos", "start promotions", "start offers", "start marketing"}
 _START = {"start", "unstop"}
 _TIERS = {"TIER_50": 50, "TIER_250": 250, "TIER_1K": 1000, "TIER_2K": 2000, "TIER_10K": 10000, "TIER_100K": 100000}
 
@@ -73,7 +77,7 @@ def check_daily_limit(sent_in_24h, limit):
 
 
 def _normal(text):
-	return re.sub(r"[^a-z ]", "", (text or "").lower()).strip()
+	return " ".join(re.sub(r"[^a-z ]", "", (text or "").lower()).split())
 
 
 def is_stop(text):
@@ -83,3 +87,25 @@ def is_stop(text):
 
 def is_start(text):
 	return _normal(text) in _START
+
+
+def is_stop_marketing(text):
+	"""STOP PROMO and its variants: the customer keeps service and order messages but wants no marketing."""
+	return _normal(text) in _STOP_MARKETING
+
+
+def is_start_marketing(text):
+	return _normal(text) in _START_MARKETING
+
+
+def check_marketing(marketing_consent, opted_out, marketing_opted_out):
+	"""(ok, code, message) for a MARKETING message. Marketing needs its own agreement ("Yes" on the marketing consent);
+	a general STOP, a STOP PROMO or a marketing "No" always blocks. Nothing sends marketing until campaigns are built;
+	this is the rule they will call."""
+	if opted_out or marketing_opted_out or marketing_consent == CONSENT_NO:
+		return False, MARKETING_OPTED_OUT, "This customer has opted out of marketing messages."
+	if marketing_consent == CONSENT_YES:
+		return True, None, None
+	return False, NO_MARKETING_CONSENT, (
+		"There is no marketing consent on this customer's record. Record it first (who agreed, when and how)."
+	)

@@ -10,7 +10,7 @@ import datetime
 import frappe
 from frappe.utils import convert_utc_to_system_timezone, now_datetime
 
-from waba import assignment, matching, parties
+from waba import assignment, locks, matching, parties
 from waba.rules import inbound, window
 
 
@@ -50,10 +50,12 @@ def store_messages(value, number, event):
 		except frappe.DuplicateEntryError:
 			counts["duplicates"] += 1
 			continue
-		_update_conversation(conversation, m, sent_at, portfolio)
-		counts["stored"] += 1
-		_keyword(conversation, m["body"])
-		_route(conversation, m["body"])
+		with locks.conversation(conversation.name):  # one message at a time per conversation: no double assignment
+			conversation.reload()
+			_update_conversation(conversation, m, sent_at, portfolio)
+			counts["stored"] += 1
+			_keyword(conversation, m["body"])
+			_route(conversation, m["body"])
 		assignment.notify(conversation, "message")
 	return counts
 

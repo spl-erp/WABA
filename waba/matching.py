@@ -31,6 +31,25 @@ def find_party(phone, bsuid, portfolio):
 	return None
 
 
+def find_all_parties(phone):
+	"""[(doctype, name), ...] every record an app says holds this phone (hook `waba_party_all`); empty when none answers."""
+	found, seen = [], set()
+	if not phone:
+		return found
+	for path in frappe.get_hooks("waba_party_all"):
+		try:
+			hits = frappe.get_attr(path)(phone) or []
+		except Exception:
+			frappe.log_error(title=f"Waba: matcher {path} failed")
+			continue
+		for hit in hits:
+			key = (hit.get("doctype"), hit.get("name"))
+			if all(key) and key not in seen and frappe.db.exists(*key):
+				seen.add(key)
+				found.append(key)
+	return found
+
+
 def identity_key(portfolio, bsuid):
 	return f"{portfolio}|{bsuid}"
 

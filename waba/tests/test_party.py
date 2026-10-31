@@ -26,10 +26,13 @@ class TestConsentFields(unittest.TestCase):
 
 	def test_the_three_customer_records_get_the_consent_fields(self):
 		self.assertEqual(install.PARTY_DOCTYPES, ("Lead", "Contact", "Customer"))
-		self.assertEqual({"waba_section", "waba_consent", "waba_consent_on", "waba_consent_source"}, set(self.fields()))
+		self.assertEqual(
+			{"waba_section", "waba_consent", "waba_consent_on", "waba_consent_source", "waba_marketing_consent", "waba_marketing_consent_on", "waba_marketing_consent_source"},
+			set(self.fields()),
+		)
 
 	def test_consent_cannot_be_edited_by_hand_on_the_form(self):
-		for name in ("waba_consent", "waba_consent_on", "waba_consent_source"):
+		for name in ("waba_consent", "waba_consent_on", "waba_consent_source", "waba_marketing_consent", "waba_marketing_consent_on", "waba_marketing_consent_source"):
 			self.assertEqual(self.fields()[name]["read_only"], 1, name)  # only waba.api.party.record_consent writes it
 			self.assertEqual(self.fields()[name]["no_copy"], 1, name)  # a duplicated Lead does not inherit consent
 

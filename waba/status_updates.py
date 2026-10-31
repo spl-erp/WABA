@@ -26,6 +26,9 @@ def apply_statuses(value):
 		current = frappe.db.get_value("Waba Message", name, "status")
 		new = statuses.next_status(current, item.get("status"))
 		if not new:
+			price = statuses.pricing(item)
+			if price:
+				frappe.db.set_value("Waba Message", name, price, update_modified=False)
 			result["unchanged"] += 1
 			continue
 		values = {"status": new}
@@ -38,6 +41,7 @@ def apply_statuses(value):
 		elif new == "Failed":
 			code, text = statuses.failure(item)
 			values.update({"error_code": str(code or ""), "error_message": text})
+		values.update(statuses.pricing(item))  # what Meta says it charged, kept so cost reports use actuals
 		frappe.db.set_value("Waba Message", name, values, update_modified=False)
 		result["updated"] += 1
 		assignment.notify(frappe.db.get_value("Waba Message", name, "conversation"), "status")

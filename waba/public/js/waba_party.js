@@ -30,7 +30,16 @@
 
 	// ------------------------------------------------------------------------------------------- the form's WhatsApp section
 
+	function marketing_text(ctx) {
+		const m = (ctx.consent && ctx.consent.marketing) || { state: "Unknown" };
+		return ` <span class="text-muted">&middot; ${__("Marketing")}: ${esc(m.state === "Yes" ? __("Yes") : m.state === "No" ? __("No") : __("Not recorded"))}</span>`;
+	}
+
 	function consent_line(ctx) {
+		return consent_core(ctx) + marketing_text(ctx);
+	}
+
+	function consent_core(ctx) {
 		const c = ctx.consent;
 		const when = c.on ? ` &middot; ${esc(frappe.datetime.str_to_user(c.on))}` : "";
 		const src = c.source ? ` &middot; ${esc(c.source)}` : "";
@@ -75,6 +84,8 @@
 		if (ctx.can_record_consent) {
 			frm.add_custom_button(__("Record WhatsApp consent"), () => consent_dialog(frm, ctx, "Yes"), group);
 			if (ctx.consent.state === "Yes") frm.add_custom_button(__("Withdraw WhatsApp consent"), () => consent_dialog(frm, ctx, "No"), group);
+			frm.add_custom_button(__("Record WhatsApp marketing consent"), () => consent_dialog(frm, ctx, "Yes", "marketing"), group);
+			if (ctx.consent.marketing && ctx.consent.marketing.state === "Yes") frm.add_custom_button(__("Withdraw WhatsApp marketing consent"), () => consent_dialog(frm, ctx, "No", "marketing"), group);
 		}
 		if ((ctx.conversations || []).length) {
 			frm.add_custom_button(__("Open WhatsApp conversation"), () => open_conversation(ctx.conversations[0].name), group);
@@ -83,17 +94,22 @@
 
 	// ------------------------------------------------------------------------------------------- record or withdraw consent
 
-	function consent_dialog(frm, ctx, state) {
+	function consent_dialog(frm, ctx, state, purpose = "service") {
 		const yes = state === "Yes";
+		const marketing = purpose === "marketing";
 		const dialog = new frappe.ui.Dialog({
-			title: yes ? __("Record WhatsApp consent") : __("Withdraw WhatsApp consent"),
+			title: marketing ? (yes ? __("Record WhatsApp marketing consent") : __("Withdraw WhatsApp marketing consent")) : yes ? __("Record WhatsApp consent") : __("Withdraw WhatsApp consent"),
 			fields: [
 				{
 					fieldtype: "HTML",
 					fieldname: "intro",
 					options: `<p class="text-muted">${
 						yes
-							? __("Only record this when the customer has clearly agreed to receive WhatsApp messages from Splashjet.")
+							? marketing
+								? __("Only record this when the customer has clearly agreed to receive promotions and offers on WhatsApp. This is separate from order and service messages.")
+								: __("Only record this when the customer has clearly agreed to receive WhatsApp messages from Splashjet.")
+							: marketing
+							? __("The customer will no longer be sent promotions or offers. Order and service messages are not affected.")
 							: __("The customer will no longer be sent any WhatsApp template.")
 					}</p>`,
 				},
@@ -103,7 +119,7 @@
 			primary_action_label: yes ? __("Record consent") : __("Withdraw consent"),
 			primary_action: (values) => {
 				dialog.hide();
-				frappe.call({ method: "waba.api.party.record_consent", args: { doctype: frm.doctype, name: frm.doc.name, consent: state, source: values.source, on: values.on } }).then(() => {
+				frappe.call({ method: "waba.api.party.record_consent", args: { doctype: frm.doctype, name: frm.doc.name, consent: state, source: values.source, on: values.on, purpose } }).then(() => {
 					frappe.show_alert({ message: yes ? __("Consent recorded.") : __("Consent withdrawn."), indicator: yes ? "green" : "orange" }, 4);
 					frm.reload_doc();
 				});

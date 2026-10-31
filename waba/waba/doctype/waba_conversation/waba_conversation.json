@@ -18,6 +18,7 @@
   "alerted_at",
   "unread_count",
   "opted_out",
+  "marketing_opted_out",
   "customer_section",
   "customer_phone",
   "customer_bsuid",
@@ -142,6 +143,13 @@
    "description": "The customer replied STOP. No template can be sent until they reply START."
   },
   {
+   "fieldname": "marketing_opted_out",
+   "fieldtype": "Check",
+   "label": "Marketing Opted Out",
+   "read_only": 1,
+   "description": "The customer replied STOP PROMO. Marketing messages are blocked; service and order messages are not."
+  },
+  {
    "fieldname": "customer_section",
    "fieldtype": "Section Break",
    "label": "Customer"
@@ -240,7 +248,7 @@
    "link_fieldname": "conversation"
   }
  ],
- "modified": "2026-10-29 15:00:00.000000",
+ "modified": "2026-10-30 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Conversation",

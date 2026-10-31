@@ -43,7 +43,7 @@ def _my_numbers():
 
 
 @frappe.whitelist()
-def context(doctype, name):
+def context(doctype: str, name: str):
 	"""Everything the WhatsApp dialog and the form's WhatsApp section need."""
 	_party(doctype, name)
 	info = parties.consent(doctype, name)
@@ -74,7 +74,8 @@ def context(doctype, name):
 		c["window_open"] = window.is_window_open(c.last_inbound_at, now)
 		c["number_name"] = frappe.db.get_value("Waba Number", c.waba_number, "display_name") or c.waba_number
 		conversations.append(c)
-	opted_out = info["flag"] or info["state"] == rules.CONSENT_NO or any(c.get("opted_out") for c in conversations)
+	elsewhere = any(parties.phone_opt_outs(k, numbers[0]["name"])["opted_out"] for k in keys) if numbers and keys else False
+	opted_out = info["flag"] or info["state"] == rules.CONSENT_NO or elsewhere or any(c.get("opted_out") for c in conversations)
 	return {
 		"title": parties.title_of(doctype, name),
 		"consent": {**info, "opted_out": opted_out},
@@ -87,13 +88,16 @@ def context(doctype, name):
 
 
 @frappe.whitelist(methods=["POST"])
-def record_consent(doctype, name, consent, source, on=None):
-	"""Record that the customer agreed (Yes) or withdrew (No) to be messaged on WhatsApp."""
+def record_consent(doctype: str, name: str, consent: str, source: str, on: str | None = None, purpose: str = "service"):
+	"""Record that the customer agreed (Yes) or withdrew (No) to be messaged on WhatsApp. `purpose` is "service" (service
+	and order messages) or "marketing" (promotions: a separate agreement)."""
 	_party(doctype, name)
 	if not frappe.has_permission(doctype, "write", name):
 		frappe.throw(_("You may not change this record."), frappe.PermissionError)
 	if consent not in (rules.CONSENT_YES, rules.CONSENT_NO):
 		frappe.throw(_("Consent is either Yes or No."))
+	if purpose not in ("service", "marketing"):
+		frappe.throw(_("Consent is for service messages or for marketing."))
 	source = (source or "").strip()
 	if not source:
 		frappe.throw(_("Say where the agreement came from."))
@@ -101,12 +105,12 @@ def record_consent(doctype, name, consent, source, on=None):
 		frappe.throw(_("Keep the source under 140 characters."))
 	if on and frappe.utils.getdate(on) > frappe.utils.getdate(frappe.utils.today()):
 		frappe.throw(_("The date cannot be in the future."))
-	parties.set_consent(doctype, name, consent, source, on)
+	parties.set_consent(doctype, name, consent, source, on, purpose=purpose)
 	return parties.consent(doctype, name)
 
 
 @frappe.whitelist(methods=["POST"])
-def start(doctype, name, number, phone, template, params=None):
+def start(doctype: str, name: str, number: str, phone: str, template: str, params: str | list | None = None):
 	"""Send the first template to a customer from their record. Creates the conversation and assigns it to the sender."""
 	_party(doctype, name)
 	numbers = {n.name: n for n in _my_numbers()}

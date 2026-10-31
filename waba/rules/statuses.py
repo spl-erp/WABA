@@ -32,3 +32,25 @@ def failure(item):
 	meaning = errors.classify(code)[1]
 	said = detail or first.get("message") or first.get("title") or ""
 	return code, f"{meaning}. Meta said: {said}".strip() if said else meaning
+
+
+def pricing(item):
+	"""What Meta says a message cost, from its status item: {"billing_category", "billable", "pricing_type",
+	"meta_conversation_id"} with only the keys Meta sent. Read at face value; Meta's invoice is the source of truth."""
+	if not isinstance(item, dict):
+		return {}
+	out = {}
+	price = item.get("pricing") if isinstance(item.get("pricing"), dict) else {}
+	convo = item.get("conversation") if isinstance(item.get("conversation"), dict) else {}
+	origin = convo.get("origin") if isinstance(convo.get("origin"), dict) else {}
+	category = price.get("category") or origin.get("type")
+	if category:
+		out["billing_category"] = str(category).lower()
+	if "billable" in price:
+		out["billable"] = 1 if price.get("billable") else 0
+	kind = price.get("type") or price.get("pricing_model")
+	if kind:
+		out["pricing_type"] = str(kind)
+	if convo.get("id"):
+		out["meta_conversation_id"] = str(convo["id"])
+	return out

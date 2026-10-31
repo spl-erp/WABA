@@ -21,6 +21,7 @@ from waba.constants import DEFAULT_API_VERSION, ROLE_ADMIN, ROLE_AGENT, ROLE_SUP
 from waba import parties, permissions
 from waba.meta import graph
 from waba.rules import consent as rules_consent
+from waba.rules import purposes
 from waba.rules import errors, outbound, window
 from waba.rules.inbound import preview as make_preview
 
@@ -28,8 +29,9 @@ SENDERS = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT, "System Manager")
 
 
 class _Context:
-	def __init__(self, conversation, need_token=True):
-		"""`need_token=False` for actions that only read the ERP's own records (listing templates) or can do without Meta."""
+	def __init__(self, conversation, need_token=True, purpose=purposes.CONVERSATIONS):
+		"""`need_token=False` for actions that only read the ERP's own records (listing templates) or can do without Meta.
+		`purpose` is what the message is for; the number must be switched on for it (waba.rules.purposes)."""
 		frappe.only_for(SENDERS)
 		self.conversation = frappe.get_doc("Waba Conversation", conversation)
 		if not permissions.conversation_has_permission(self.conversation):
@@ -38,8 +40,7 @@ class _Context:
 		self.account = frappe.get_doc("Waba Account", self.number.account)
 		if not (self.number.enabled and self.account.enabled):
 			frappe.throw(_("The number or its WhatsApp account is switched off."))
-		if not self.number.purpose_conversations:
-			frappe.throw(_("This number is not set up for conversations."))
+		self.refuse_unless(purposes.check({p: self.number.get(f"purpose_{p}") for p in purposes.PURPOSES}, purpose))
 		self.token = get_decrypted_password("Waba Portfolio", self.account.portfolio, "access_token", raise_exception=False)
 		if need_token and not self.token:
 			frappe.throw(_("Save the access token on the portfolio {0} first.").format(self.account.portfolio))
@@ -66,17 +67,28 @@ def _as_list(params):
 
 
 @frappe.whitelist(methods=["POST"])
-def send_text(conversation, body, reply_to=None):
-	ctx = _Context(conversation)
+def send_text(conversation: str, body: str, reply_to: str | None = None):
+	"""A rep's reply. Always origin Person: the browser cannot choose another origin."""
+	return _send_text(conversation, body, reply_to, purposes.PERSON)
+
+
+def _send_text(conversation, body, reply_to, origin):
+	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
 	ctx.refuse_unless(outbound.check_free_text(body, ctx.conversation.last_inbound_at, now_datetime()))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
 	payload = outbound.text_payload(ctx.conversation.customer_phone, body, reply_to)
-	return _deliver(ctx, payload, {"message_type": "text", "body": body.strip(), "reply_to_message_id": reply_to})
+	return _deliver(ctx, payload, {"message_type": "text", "body": body.strip(), "reply_to_message_id": reply_to}, origin)
 
 
 @frappe.whitelist(methods=["POST"])
-def send_template(conversation, template, params=None):
-	ctx = _Context(conversation)
+def send_template(conversation: str, template: str, params: str | list | None = None):
+	"""A rep's template. Always origin Person: the browser cannot choose another origin."""
+	return _send_template(conversation, template, params, purposes.PERSON)
+
+
+def _send_template(conversation, template, params, origin):
+	"""The one template sender. Notifications, reminders and campaigns call this with their own origin (server side only)."""
+	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
 	tpl = frappe.get_doc("Waba Template", template)
 	if tpl.account != ctx.account.name:
 		frappe.throw(_("That template belongs to a different WhatsApp account."))
@@ -101,11 +113,12 @@ def send_template(conversation, template, params=None):
 			"business_initiated": 0 if window.is_window_open(ctx.conversation.last_inbound_at, now_datetime()) else 1,
 			"body": outbound.fill(tpl.body_text, [str(v).strip() for v in values]),
 		},
+		origin,
 	)
 
 
 @frappe.whitelist()
-def templates_for(conversation):
+def templates_for(conversation: str):
 	"""Sendable templates for the conversation's account, for the Send template dialog. Reads the ERP only, so no token is needed."""
 	ctx = _Context(conversation, need_token=False)
 	return frappe.get_all(
@@ -117,7 +130,7 @@ def templates_for(conversation):
 
 
 @frappe.whitelist(methods=["POST"])
-def mark_read(conversation):
+def mark_read(conversation: str):
 	"""Clear the unread count and tell WhatsApp the customer's latest message was read (best effort)."""
 	ctx = _Context(conversation, need_token=False)
 	latest = frappe.db.get_value(
@@ -135,7 +148,7 @@ def mark_read(conversation):
 	return {"ok": True}
 
 
-def _deliver(ctx, payload, values):
+def _deliver(ctx, payload, values, origin=purposes.PERSON):
 	now = now_datetime()
 	message = frappe.get_doc(
 		{
@@ -146,6 +159,7 @@ def _deliver(ctx, payload, values):
 			"sent_at": now,
 			"waba_number": ctx.number.name,
 			"sent_by": frappe.session.user,
+			"origin": origin,
 			"preview": make_preview(values.get("body")),
 			**values,
 		}

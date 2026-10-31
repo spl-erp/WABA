@@ -56,7 +56,7 @@ MESSAGE_FIELDS = [
 
 
 @frappe.whitelist()
-def assets_version():
+def assets_version() -> str:
 	"""A stamp that changes whenever the inbox's script or style files change. The page puts it on their URLs, so a
 	changed file is fetched at once and an unchanged one stays cached. Reveals nothing but a number."""
 	import os
@@ -136,7 +136,7 @@ def _conversation_query(view, scope_name, number=None, search=None):
 
 
 @frappe.whitelist()
-def conversations(view="open", number=None, search=None, start=0, limit=30, scope="all"):
+def conversations(view: str = "open", number: str | None = None, search: str | None = None, start: int = 0, limit: int = 30, scope: str = "all"):
 	"""{"rows": [...], "has_more": bool}, newest message first."""
 	query, C, who = _conversation_query(view, scope, number, search)
 	start, limit = max(int(start or 0), 0), min(max(int(limit or 30), 1), 100)
@@ -164,7 +164,7 @@ def conversations(view="open", number=None, search=None, start=0, limit=30, scop
 
 
 @frappe.whitelist()
-def summary(number=None, scope="all"):
+def summary(number: str | None = None, scope: str = "all"):
 	"""Counts for the tabs, and what this person's view offers (the Unassigned tab and the Mine / My team switch)."""
 	who = _scope()
 	counts = {}
@@ -183,7 +183,7 @@ def _my_availability(user):
 
 
 @frappe.whitelist()
-def thread(conversation, limit=60, before=None):
+def thread(conversation: str, limit: int = 60, before: str | None = None):
 	"""One conversation: its header details and the latest `limit` messages (oldest first); `before` (a time) loads older ones."""
 	conv = _open(conversation)
 	limit = min(max(int(limit or 60), 1), 200)
@@ -315,7 +315,7 @@ def _add_quoted(rows, conversation, senders):
 
 
 @frappe.whitelist()
-def transfer_targets(conversation):
+def transfer_targets(conversation: str):
 	"""The people the conversation may be handed to: the agents of its number (enabled users), with how busy they are."""
 	conv = _open(conversation)
 	number = frappe.get_doc("Waba Number", conv.waba_number)
@@ -342,7 +342,7 @@ def transfer_targets(conversation):
 
 
 @frappe.whitelist(methods=["POST"])
-def transfer(conversation, to_user, note):
+def transfer(conversation: str, to_user: str, note: str):
 	"""Hand the conversation to another agent of the same number, with a note the new person reads."""
 	conv = _open(conversation)
 	note = (note or "").strip()
@@ -387,7 +387,7 @@ def transfer(conversation, to_user, note):
 
 
 @frappe.whitelist(methods=["POST"])
-def set_status(conversation, status):
+def set_status(conversation: str, status: str):
 	"""Mark a conversation Done, or reopen it. A new customer message reopens it by itself."""
 	if status not in ("Open", "Done"):
 		frappe.throw(_("Status must be Open or Done."))
@@ -405,7 +405,7 @@ def set_status(conversation, status):
 
 
 @frappe.whitelist(methods=["POST"])
-def add_note(conversation, body):
+def add_note(conversation: str, body: str):
 	"""An internal note inside the conversation. It is never sent to the customer."""
 	conv = _open(conversation)
 	body = (body or "").strip()
@@ -434,7 +434,7 @@ def quick_replies():
 
 
 @frappe.whitelist(methods=["POST"])
-def set_available(available):
+def set_available(available: int | str | bool):
 	"""Away / available for the person themself, on every number they work. Away people get no new conversations."""
 	frappe.only_for(SENDERS)
 	flag = 1 if str(available).lower() in ("1", "true", "yes") else 0

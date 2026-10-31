@@ -11,7 +11,7 @@ from frappe import _
 from frappe.utils import add_to_date, now_datetime
 
 from waba import teams
-from waba.rules import routing, tags
+from waba.rules import purposes, routing, tags
 
 HOOK_RECORD_OWNER = "waba_record_owner"
 
@@ -92,8 +92,12 @@ def assign(conversation, message_body=""):
 		conversation = frappe.get_doc("Waba Conversation", conversation)
 	if conversation.status == "Done":
 		return None
-	ctx = build_context(conversation, message_body)
-	decision = routing.choose_assignee(ctx)
+	number = frappe.db.get_value("Waba Number", conversation.waba_number, [f"purpose_{p}" for p in purposes.PURPOSES] + ["reply_policy"], as_dict=True) or {}
+	if not conversation.assigned_to and purposes.replies_go_to_pool({p: number.get(f"purpose_{p}") for p in purposes.PURPOSES}, number.get("reply_policy")):
+		# a number kept for notifications or campaigns: a customer's reply waits for a supervisor, not a rep picked by the rules
+		decision = routing.Decision(None, "pool", ("reply policy",))
+	else:
+		decision = routing.choose_assignee(build_context(conversation, message_body))
 	if decision.assignee and decision.assignee == conversation.assigned_to:
 		return None
 	if not decision.assignee and conversation.assigned_to:

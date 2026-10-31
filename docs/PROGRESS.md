@@ -1,7 +1,7 @@
 # Waba build progress
 
 Status values: Not started, In progress, Accepted. A chunk is Accepted only when the owner says so after the demo.
-Plan: 12 chunks, each shown on UAT before the next starts. Sizes are relative (S/M/L), there are no dates.
+Plan: 15 chunks and one milestone, each shown on UAT before the next starts. The roadmap after C7 was revised on 30 Oct 2026 after a study of the alternatives (plan section 14). Sizes are relative (S/M/L), there are no dates.
 
 | # | Chunk | Status | What you can try when it is done | Needs from the owner | Size |
 |---|---|---|---|---|---|
@@ -13,10 +13,14 @@ Plan: 12 chunks, each shown on UAT before the next starts. Sizes are relative (S
 | C5b | Chat screen redesign and extras | Built and checked on UAT in light/dark and desktop/tablet/phone; awaiting owner acceptance | New look as the owner shows it; new-message alerts anywhere in the ERP (notice with Open button, tone, unread count in the tab title, optional desktop notification); older messages, clickable links, reply shows the message it answers; emoji picker; search inside a chat (/ key). Attach button is shown but disabled until C9; the customer side panel comes after C6 | The owner's reference screenshots | M |
 | C6 | Routing and teamwork | Written and tested offline (222 tests); migrate and UAT checks pending | Waba Team tree (Common > departments > sub-teams, each department with its own number); each level sees itself and below, never sideways; conversations assigned on arrival with the reason shown; Unassigned tab for leads; transfer with a note, mark done, internal notes, quick replies, Available / Away; alerts only for the right people | None | L |
 | C7 | WhatsApp from Lead / Contact / Customer | Written and tested offline (254 tests); migrate and UAT checks pending | WhatsApp button and dialog on the three forms; consent recorded on the record (Yes / No, date, source); first contact by Utility template only, blocked without consent, after STOP or when the record is marked unsubscribed; Meta's daily limit checked; the conversation appears in the inbox and in the form's WhatsApp section | Where consent is stored: decided (new Waba fields) | M |
-| C8 | Reminders and scheduled follow-ups | Not started | Set a reminder or scheduled message; it fires at the time with re-checks | None | S |
-| C9 | Attachments | Not started | PDF and image both ways; limits explained | Which documents to send | M |
-| C10 | Notifications | Not started | Automatic/Manual switch per type; dispatch update from a Delivery Note; payment reminder preview | After-hours reply decision | M |
-| C11 | Reports, cost and health | Not started | Four reports, monthly cost, health panel, alerts | KPI/DILO decision | L |
-| C12 | Pilot and production | Not started | Small real team; production setup and rollback runbook | Owner sign-off | M |
+| C8 | Foundation hardening | Written and tested offline (276 tests); migrate and UAT checks pending | Origin tag on every message (Person, Notification, Reminder, Campaign, Auto-reply, Phone app, System); number purposes enforced for every send; a reply policy for numbers not used for conversations; consent split into service and marketing (STOP PROMO stops marketing only); the price Meta reports is stored on each message; a lock stops double assignment when two messages arrive together; a claim helper so scheduled sends go out once; typed API methods | None | M |
+| C9 | Media and every message type | Planned, not started | Images, documents, voice notes and more received and saved; ERP PDFs, a shared file library and device files sent with a caption preview; reactions; retry for failed sends; per-chat drafts, unread divider, message info, shortcuts | Library content (brochures, price lists) later | L |
+| M1 | Live Meta test (milestone) | Planned after C9 | The real connection with a test number: handshake, text, media, template, delivery ticks and costs; fixes for anything real Meta shows | Meta test app, test number, access token (docs/META_SETUP.md) | M |
+| C10 | Templates studio | Planned, not started | Create, edit and submit templates with image/document headers and buttons; send templates with header and button values; fill values from the record; approval, category and quality events | None | L |
+| C11 | Notifications and reminders | Planned, not started | Automatic or Manual switch per message type: quotation follow-up, payment reminder, enquiry acknowledgement (consent needed); reminders and scheduled messages on conversations, re-checked when they fire | None | L |
+| C12 | Reports, cost and health | Planned, not started | Four reports; real monthly cost vs the forecast sheet; health panel and alerts | KPI/DILO decision | L |
+| C13 | Customer side panel | Planned, not started | Slide-in panel in the inbox: record, quotations, orders, payments, consent | Confirm priority | M |
+| C14 | Coexistence (optional) | Only after Meta confirms how your own number can be connected | Phone chats and the ERP inbox on one number: messages typed on the phone appear in the thread; history import; phone-inactivity warning | Setup route confirmed with Meta | M to L |
+| C15 | Pilot and production | Not started | Small real team; production setup and rollback runbook | Owner sign-off; Meta account status; number reuse decision | M |
 
 Every chunk ends with: offline tests green, migrate on UAT, a demo script, a CHANGELOG.md entry, this table updated, owner commits and pushes, owner says "accepted".

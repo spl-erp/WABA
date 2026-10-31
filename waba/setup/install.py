@@ -77,6 +77,10 @@ def party_fields():
 		{"fieldname": "waba_consent_on", "fieldtype": "Date", "label": "Consent Date", "read_only": 1, "no_copy": 1},
 		{"fieldname": "waba_consent_source", "fieldtype": "Data", "label": "Consent Source", "read_only": 1, "no_copy": 1,
 		 "description": "Where the agreement came from, for example an IndiaMART enquiry or a verbal yes."},
+		{"fieldname": "waba_marketing_consent", "fieldtype": "Select", "label": "WhatsApp Marketing Consent", "options": "Unknown\nYes\nNo", "default": "Unknown", "read_only": 1, "no_copy": 1,
+		 "description": "A separate agreement for promotions and offers. Service and order messages do not need it."},
+		{"fieldname": "waba_marketing_consent_on", "fieldtype": "Date", "label": "Marketing Consent Date", "read_only": 1, "no_copy": 1},
+		{"fieldname": "waba_marketing_consent_source", "fieldtype": "Data", "label": "Marketing Consent Source", "read_only": 1, "no_copy": 1},
 	]
 
 

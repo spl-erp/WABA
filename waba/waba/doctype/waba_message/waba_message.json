@@ -20,6 +20,12 @@
   "sent_by",
   "waba_template",
   "business_initiated",
+  "origin",
+  "pricing_section",
+  "billing_category",
+  "billable",
+  "pricing_type",
+  "meta_conversation_id",
   "delivery_section",
   "delivered_at",
   "read_at",
@@ -144,6 +150,46 @@
    "description": "A template sent while the customer's 24-hour window was closed. These count against Meta's daily limit."
   },
   {
+   "fieldname": "origin",
+   "fieldtype": "Select",
+   "label": "Origin",
+   "options": "Person\nNotification\nReminder\nCampaign\nAuto-reply\nPhone app\nSystem",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Who or what sent it: a person, an ERP notification, a reminder, a campaign, an auto-reply, the phone app or the system."
+  },
+  {
+   "fieldname": "pricing_section",
+   "fieldtype": "Section Break",
+   "label": "What Meta charged"
+  },
+  {
+   "fieldname": "billing_category",
+   "fieldtype": "Data",
+   "label": "Meta Category",
+   "read_only": 1,
+   "description": "The price category Meta reports for this message (marketing, utility, authentication, service)."
+  },
+  {
+   "fieldname": "billable",
+   "fieldtype": "Check",
+   "label": "Billable",
+   "read_only": 1
+  },
+  {
+   "fieldname": "pricing_type",
+   "fieldtype": "Data",
+   "label": "Pricing Type",
+   "read_only": 1,
+   "description": "For example regular, or free_customer_service."
+  },
+  {
+   "fieldname": "meta_conversation_id",
+   "fieldtype": "Data",
+   "label": "Meta Conversation ID",
+   "read_only": 1
+  },
+  {
    "fieldname": "delivery_section",
    "fieldtype": "Section Break",
    "label": "Delivery"
@@ -179,7 +225,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-29 15:30:00.000000",
+ "modified": "2026-10-30 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Message",

@@ -22,6 +22,7 @@
   "purpose_documents",
   "purpose_notifications",
   "purpose_campaigns",
+  "reply_policy",
   "hours_section",
   "hours_enabled",
   "hours_start",
@@ -159,6 +160,15 @@
    "default": "0"
   },
   {
+   "fieldname": "reply_policy",
+   "fieldtype": "Select",
+   "label": "Replies On A Number Not Used For Conversations",
+   "options": "Route normally\nPool for supervisors",
+   "default": "Route normally",
+   "depends_on": "eval:!doc.purpose_conversations",
+   "description": "For a number kept for notifications or campaigns: let a customer's reply be routed like any chat, or hold it for supervisors."
+  },
+  {
    "fieldname": "hours_section",
    "fieldtype": "Section Break",
    "label": "Business hours"
@@ -267,7 +277,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-29 12:00:00.000000",
+ "modified": "2026-10-30 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Number",
