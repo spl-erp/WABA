@@ -32,6 +32,14 @@ SECTIONS = [
 		[("Waba Template", "Templates", "Message templates as Meta has them; only approved ones can be sent")],
 	),
 	(
+		"Notifications",
+		[
+			("Waba Settings", "Notification Settings", "The master switch, the hourly limit and test mode"),
+			("Waba Notification Rule", "Notification Rules", "Quotation follow-up, payment reminder, enquiry acknowledgement"),
+			("Waba Notification Log", "Notification Log", "Every automatic message and why it was sent, held or skipped"),
+		],
+	),
+	(
 		"Conversations",
 		[
 			("Waba Conversation", "Conversations", "One thread per business number and customer"),

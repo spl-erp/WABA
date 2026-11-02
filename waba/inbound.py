@@ -130,18 +130,20 @@ def _fresh_snapshot():
 		frappe.db.commit()  # nosemgrep
 
 
-def _conversation(key, number, m):
+def _conversation(key, number, m, party=None):
 	"""The conversation for this customer and number, created once even when two deliveries from a new customer arrive in the
 	same second (two workers). One worker at a time creates it; a loser that still hits the unique key reads the winner's row
-	with a locking read, because its own transaction snapshot may predate the winner's commit."""
+	with a locking read, because its own transaction snapshot may predate the winner's commit.
+	`party` is (doctype, name) when the caller already knows the record (an automatic notification): the conversation is
+	then created Matched to it; an existing one without a record gets it."""
 	name = _find(key)
 	if name:
-		return frappe.get_doc("Waba Conversation", name)
+		return _with_party(frappe.get_doc("Waba Conversation", name), party)
 	with locks.conversation(f"create:{key}"):
 		_fresh_snapshot()
 		name = _find(key)
 		if name:
-			return frappe.get_doc("Waba Conversation", name)
+			return _with_party(frappe.get_doc("Waba Conversation", name), party)
 		try:
 			return frappe.get_doc(
 				{
@@ -152,7 +154,9 @@ def _conversation(key, number, m):
 					"customer_bsuid": m["bsuid"],
 					"profile_name": m["profile_name"],
 					"customer_label": inbound.customer_label(m["profile_name"], m["phone"], m["bsuid"]),
-					"match_state": "Triage",
+					"match_state": "Matched" if party else "Triage",
+					"party_doctype": party[0] if party else None,
+					"party": party[1] if party else None,
 					"status": "Open",
 					"unread_count": 0,
 				}
@@ -161,7 +165,15 @@ def _conversation(key, number, m):
 			name = frappe.db.get_value("Waba Conversation", {"conversation_key": key}, "name", for_update=True)
 			if not name:
 				raise
-			return frappe.get_doc("Waba Conversation", name)
+			return _with_party(frappe.get_doc("Waba Conversation", name), party)
+
+
+def _with_party(conversation, party):
+	"""A conversation known only by phone gets the record the caller matched it to."""
+	if party and not conversation.party:
+		frappe.db.set_value("Waba Conversation", conversation.name, {"party_doctype": party[0], "party": party[1], "match_state": "Matched"}, update_modified=False)
+		conversation.reload()
+	return conversation
 
 
 def _update_conversation(conversation, m, sent_at, portfolio):

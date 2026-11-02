@@ -55,8 +55,12 @@ class TestConsentFields(unittest.TestCase):
 
 class TestFormScript(unittest.TestCase):
 	def test_registered_for_the_three_doctypes_without_replacing_anything(self):
-		for doctype in ("Lead", "Contact", "Customer"):
+		for doctype in ("Contact", "Customer"):
 			self.assertEqual(hooks.doctype_js[doctype], ["public/js/waba_party.js"], doctype)  # a list: added beside other apps' scripts
+		# the Lead form also gets the notification button (C11); the Quotation and Sales Invoice forms only that one
+		self.assertEqual(hooks.doctype_js["Lead"], ["public/js/waba_party.js", "public/js/waba_notify_doc.js"])
+		for doctype in ("Quotation", "Sales Invoice"):
+			self.assertEqual(hooks.doctype_js[doctype], ["public/js/waba_notify_doc.js"], doctype)
 		self.assertTrue(os.path.exists(PARTY_JS))
 
 	def test_it_only_calls_server_functions_that_exist(self):

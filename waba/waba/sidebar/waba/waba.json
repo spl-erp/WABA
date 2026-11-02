@@ -105,6 +105,30 @@
   },
   {
    "type": "Link",
+   "label": "Notification Rules",
+   "link_type": "DocType",
+   "link_to": "Waba Notification Rule",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Notification Log",
+   "link_type": "DocType",
+   "link_to": "Waba Notification Log",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
+   "label": "Notification Settings",
+   "link_type": "DocType",
+   "link_to": "Waba Settings",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
    "label": "Meta Apps",
    "link_type": "DocType",
    "link_to": "Waba Meta App",

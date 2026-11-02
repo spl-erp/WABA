@@ -285,6 +285,12 @@ scheduler_events = {
 			"waba.assignment.assign_waiting",
 			"waba.assignment.alert_unanswered",
 			"waba.media.retry_pending",
+			"waba.notify.scan_leads",
+			"waba.notify.dispatch",
+			"waba.reminders.fire_due",
+		],
+		"7 * * * *": [
+			"waba.notify.scan_dates",
 		],
 	},
 }
@@ -310,7 +316,9 @@ has_permission = {
 
 # the Lead, Contact and Customer forms get a WhatsApp button and a WhatsApp section (added to, never replacing, any other script)
 doctype_js = {
-	"Lead": ["public/js/waba_party.js"],
+	"Lead": ["public/js/waba_party.js", "public/js/waba_notify_doc.js"],
 	"Contact": ["public/js/waba_party.js"],
 	"Customer": ["public/js/waba_party.js"],
+	"Quotation": ["public/js/waba_notify_doc.js"],
+	"Sales Invoice": ["public/js/waba_notify_doc.js"],
 }

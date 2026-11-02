@@ -1,0 +1,175 @@
+{
+ "actions": [],
+ "autoname": "field:rule_name",
+ "creation": "2026-11-02 20:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "rule_name",
+  "message_type",
+  "enabled",
+  "mode",
+  "column_break_nr1",
+  "waba_number",
+  "template",
+  "still_needed",
+  "timing_section",
+  "days_after",
+  "repeat_every_days",
+  "max_sends",
+  "lookback_days",
+  "ack_within_minutes",
+  "column_break_nr2",
+  "max_per_customer_per_day",
+  "help"
+ ],
+ "fields": [
+  {
+   "fieldname": "rule_name",
+   "fieldtype": "Data",
+   "label": "Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "message_type",
+   "fieldtype": "Select",
+   "label": "Kind of message",
+   "options": "\nQuotation follow-up\nPayment reminder\nEnquiry acknowledgement",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Switched on",
+   "default": "0",
+   "in_list_view": 1,
+   "description": "Off by default. A rule can be switched on only when everything it needs is filled in."
+  },
+  {
+   "fieldname": "mode",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "Manual\nAutomatic",
+   "default": "Manual",
+   "in_list_view": 1,
+   "description": "Manual: each message waits for a person to look at it and press Send. Automatic: it goes out by itself, every check still applies."
+  },
+  {
+   "fieldname": "column_break_nr1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "waba_number",
+   "fieldtype": "Link",
+   "label": "Send from number",
+   "options": "Waba Number",
+   "description": "Must be switched on for notifications and must not be receive-only."
+  },
+  {
+   "fieldname": "template",
+   "fieldtype": "Link",
+   "label": "Template",
+   "options": "Waba Template",
+   "description": "An approved Utility template of that number's WhatsApp account. Its values must all be filled from the record (see the template's variable map); a value left on 'Ask each time' stops an automatic send."
+  },
+  {
+   "fieldname": "still_needed",
+   "fieldtype": "Small Text",
+   "label": "Still needed",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timing_section",
+   "fieldtype": "Section Break",
+   "label": "When"
+  },
+  {
+   "fieldname": "days_after",
+   "fieldtype": "Int",
+   "label": "Days after",
+   "depends_on": "eval:doc.message_type=='Quotation follow-up' || doc.message_type=='Payment reminder'",
+   "description": "Quotation follow-up: days after the quotation date. Payment reminder: days after the invoice due date. 0 means not set."
+  },
+  {
+   "fieldname": "repeat_every_days",
+   "fieldtype": "Int",
+   "label": "Repeat every (days)",
+   "depends_on": "eval:doc.message_type=='Quotation follow-up' || doc.message_type=='Payment reminder'",
+   "description": "Days between messages about the same record. Needed when 'Most messages' is more than 1."
+  },
+  {
+   "fieldname": "max_sends",
+   "fieldtype": "Int",
+   "label": "Most messages per record",
+   "default": "1",
+   "depends_on": "eval:doc.message_type=='Quotation follow-up' || doc.message_type=='Payment reminder'"
+  },
+  {
+   "fieldname": "lookback_days",
+   "fieldtype": "Int",
+   "label": "Ignore records older than (days)",
+   "default": "30",
+   "depends_on": "eval:doc.message_type=='Quotation follow-up' || doc.message_type=='Payment reminder'",
+   "description": "A quotation or invoice whose moment came more than this many days ago is left alone, so switching the rule on never messages old records. 0 means no limit."
+  },
+  {
+   "fieldname": "ack_within_minutes",
+   "fieldtype": "Int",
+   "label": "Acknowledge within (minutes)",
+   "depends_on": "eval:doc.message_type=='Enquiry acknowledgement'",
+   "description": "A new enquiry is acknowledged only if it is still this fresh when the message would go. 0 means not set."
+  },
+  {
+   "fieldname": "column_break_nr2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "max_per_customer_per_day",
+   "fieldtype": "Int",
+   "label": "Most notifications per customer per day",
+   "default": "1",
+   "description": "Across every rule, so a customer is never flooded."
+  },
+  {
+   "fieldname": "help",
+   "fieldtype": "HTML",
+   "options": "<p class=\"text-muted small\">Nothing is sent until: the master switch in <b>Waba Settings</b> is on, this rule is switched on, and the checks pass at the moment of sending (consent, STOP, template still approved, number not receive-only, business hours, limits). Every decision is recorded in the Notification Log with its reason.</p>"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-02 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Notification Rule",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "rule_name",
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1
+  }
+ ]
+}

@@ -340,6 +340,29 @@
 		}).map((s) => s.id);
 	}
 
+	/** Ready-made times for "Remind me", from the site's current date-time text ("2026-11-10 12:00:00"). Works on the wall clock
+	 * the text shows, so it does not depend on the browser's time zone. */
+	function reminderChoices(nowText) {
+		const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/.exec(String(nowText || ""));
+		if (!m) return [];
+		const base = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+		const text = (ms) => {
+			const d = new Date(ms);
+			const p = (n) => String(n).padStart(2, "0");
+			return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:00`;
+		};
+		const day = 86400000;
+		const at10 = (daysAhead) => Date.UTC(+m[1], +m[2] - 1, +m[3] + daysAhead, 10, 0);
+		const weekday = new Date(base).getUTCDay(); // 0 Sunday
+		const toMonday = ((8 - weekday) % 7) || 7;
+		return [
+			{ label: "In 2 hours", value: text(base + 2 * 3600000) },
+			{ label: "Tomorrow 10:00", value: text(at10(1)) },
+			{ label: "In 3 days, 10:00", value: text(at10(3)) },
+			{ label: "Next Monday 10:00", value: text(at10(toMonday)) },
+		];
+	}
+
 	/** WhatsApp's *bold*, _italic_, ~strike~ and ```mono``` on already-escaped (and linkified) HTML. Markers must touch the
 	 * word on both sides and sit at a word boundary, so "5 * 6 * 7" and snake_case_names are left alone; link text and
 	 * addresses are never touched. */
@@ -365,5 +388,5 @@
 			.join("");
 	}
 
-	return { MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, fillTemplate, missingSlots, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
+	return { MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, fillTemplate, missingSlots, reminderChoices, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
 });

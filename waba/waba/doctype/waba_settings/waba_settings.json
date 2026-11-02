@@ -1,0 +1,37 @@
+{
+ "actions": [],
+ "creation": "2026-11-02 20:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "notifications_section",
+  "notifications_enabled",
+  "max_sends_per_hour",
+  "sender_label",
+  "test_section",
+  "test_phones"
+ ],
+ "fields": [
+  {"fieldname": "notifications_section", "fieldtype": "Section Break", "label": "Automatic WhatsApp messages"},
+  {"fieldname": "notifications_enabled", "fieldtype": "Check", "label": "Send notifications", "default": "0", "description": "The master switch. While it is off, no rule sends anything, even one set to Automatic. Manual approvals still work only when this is on."},
+  {"fieldname": "max_sends_per_hour", "fieldtype": "Int", "label": "Most automatic messages per hour", "default": "60", "description": "A brake: when the limit is reached the rest wait for the next hour. 0 means no limit."},
+  {"fieldname": "sender_label", "fieldtype": "Data", "label": "Name shown for 'Sender name' values", "default": "Splashjet", "description": "An automatic message has no person behind it; this text fills any template value set to 'Sender name'."},
+  {"fieldname": "test_section", "fieldtype": "Section Break", "label": "Test mode"},
+  {"fieldname": "test_phones", "fieldtype": "Small Text", "label": "Only send to these phone numbers", "description": "One per line. When this is filled, nobody else ever receives a notification (they are logged as skipped). Leave it empty for normal running. Use it for a first trial."}
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-02 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Settings",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1},
+  {"role": "Waba Admin", "read": 1, "write": 1, "create": 1}
+ ]
+}

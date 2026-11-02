@@ -1138,6 +1138,8 @@ class WabaInbox {
 		if (c.customer_phone) {
 			items.push({ icon: "copy", label: __("Copy phone number"), run: () => frappe.utils.copy_to_clipboard(c.customer_phone) });
 		}
+		items.push({ icon: "clock", label: __("Remind me..."), run: () => this.remind_dialog() });
+		items.push({ icon: "bell", label: __("My reminders"), run: () => this.reminders_dialog() });
 		items.push({ icon: "search", label: __("Search in conversation"), run: () => this.thread.open_search() });
 		items.push({ icon: "external", label: __("Open conversation record"), run: () => frappe.set_route("Form", "Waba Conversation", c.name) });
 		const alerts = window.waba_alerts;
@@ -1162,6 +1164,66 @@ class WabaInbox {
 			$menu.remove();
 		});
 		setTimeout(() => $(document).one("click.waba_menu", () => $menu.remove()), 0);
+	}
+
+	// ---------------------------------------------------------------- reminders
+
+	remind_dialog() {
+		const c = this.conversation();
+		if (!c) return;
+		const choices = WabaLib.reminderChoices(frappe.datetime.now_datetime());
+		const dialog = new frappe.ui.Dialog({
+			title: __("Remind me about {0}", [c.customer_label]),
+			fields: [
+				{ fieldtype: "HTML", fieldname: "quick", options: `<div class="waba-quickdates">${choices.map((x, i) => `<button type="button" class="btn btn-default btn-xs" data-i="${i}" style="margin:0 6px 6px 0">${waba_e(__(x.label))}</button>`).join("")}</div>` },
+				{ fieldname: "remind_at", label: __("Remind me at"), fieldtype: "Datetime", reqd: 1, default: choices.length ? choices[0].value : "" },
+				{ fieldname: "note", label: __("Note (optional)"), fieldtype: "Small Text", description: __("Shown with the reminder. Never sent to the customer.") },
+			],
+			primary_action_label: __("Set reminder"),
+			primary_action: (values) => {
+				dialog.get_primary_btn().prop("disabled", true);
+				frappe
+					.call({ method: "waba.reminders.remind", args: { conversation: c.name, remind_at: values.remind_at, note: values.note || "" }, freeze: false })
+					.then(() => {
+						dialog.hide();
+						frappe.show_alert({ message: __("Reminder set for {0}.", [frappe.datetime.str_to_user(values.remind_at)]), indicator: "green" }, 5);
+					})
+					.catch(() => dialog.get_primary_btn().prop("disabled", false));
+			},
+		});
+		dialog.$wrapper.find(".waba-quickdates button").on("click", (ev) => dialog.set_value("remind_at", choices[$(ev.currentTarget).data("i")].value));
+		dialog.show();
+	}
+
+	reminders_dialog() {
+		const dialog = new frappe.ui.Dialog({ title: __("My reminders"), fields: [{ fieldtype: "HTML", fieldname: "list" }] });
+		const load = () =>
+			frappe.call({ method: "waba.reminders.my_reminders", args: { view: "open" }, silent: true }).then((r) => {
+				const rows = r.message || [];
+				const html = rows.length
+					? rows
+							.map(
+								(x) => `<div class="waba-rem" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color)">
+									<div style="flex:1;min-width:0"><b>${waba_e(x.customer || "")}</b>${x.due ? ` <span class="indicator-pill red">${waba_e(__("Due"))}</span>` : ""}<br>
+									<span class="text-muted small">${waba_e(frappe.datetime.str_to_user(x.remind_at))}${x.note ? " - " + waba_e(x.note) : ""}</span></div>
+									<button class="btn btn-default btn-xs" data-open="${waba_e(x.conversation)}">${waba_e(__("Open chat"))}</button>
+									<button class="btn btn-default btn-xs" data-done="${waba_e(x.name)}">${waba_e(x.status === "Pending" ? __("Cancel") : __("Done"))}</button></div>`
+							)
+							.join("")
+					: `<div class="text-muted">${waba_e(__("No reminders waiting."))}</div>`;
+				dialog.get_field("list").$wrapper.html(html);
+				dialog.$wrapper.find("[data-open]").on("click", (ev) => {
+					dialog.hide();
+					this.open_thread($(ev.currentTarget).data("open"));
+				});
+				dialog.$wrapper.find("[data-done]").on("click", (ev) => {
+					const id = $(ev.currentTarget).data("done");
+					const pending = rows.find((x) => x.name === id).status === "Pending";
+					frappe.call({ method: pending ? "waba.reminders.cancel_reminder" : "waba.reminders.done_reminder", args: { reminder: id }, silent: true }).then(load);
+				});
+			});
+		dialog.show();
+		load();
 	}
 
 	// ---------------------------------------------------------------- teamwork

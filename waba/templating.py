@@ -35,7 +35,7 @@ def map_rows(tpl):
 	]
 
 
-def context_for(party_doctype, party, customer_label="", profile_name=""):
+def context_for(party_doctype, party, customer_label="", profile_name="", sender=None, reference=None):
 	"""What the variable map may draw on: the matched record's plain fields (only if this person may read it), the sender,
 	today and the customer's name. Splashjet-specific fields arrive through the `waba_template_values` hook."""
 	record = {}
@@ -49,6 +49,8 @@ def context_for(party_doctype, party, customer_label="", profile_name=""):
 				frappe.log_error(title="Waba: template values hook failed")
 				continue
 			record.update(template_vars.public_record(extra))
+	if reference:  # a notification is about a document (a quotation, an invoice): its fields are `doc.<field>` in the variable map
+		record["doc"] = template_vars.public_record(reference)
 	name = ""
 	for key in ("customer_name", "lead_name", "full_name"):
 		if record.get(key):
@@ -60,16 +62,16 @@ def context_for(party_doctype, party, customer_label="", profile_name=""):
 		name = (profile_name or customer_label or "").split(" · ")[0].strip()
 	return {
 		"record": record,
-		"sender": frappe.utils.get_fullname(frappe.session.user),
+		"sender": sender or frappe.utils.get_fullname(frappe.session.user),  # an automatic message has no person: the caller passes a label
 		"today": frappe.utils.formatdate(frappe.utils.today(), "dd-mm-yyyy"),
 		"customer_name": name,
 	}
 
 
-def prepare(tpl, party_doctype, party, customer_label="", profile_name="", typed=None):
+def prepare(tpl, party_doctype, party, customer_label="", profile_name="", typed=None, sender=None, reference=None):
 	"""(structure, values, missing slots, problems) for a template and what the person typed or chose."""
 	structure = structure_of(tpl)
-	filled, _missing = template_vars.resolve(map_rows(tpl), context_for(party_doctype, party, customer_label, profile_name))
+	filled, _missing = template_vars.resolve(map_rows(tpl), context_for(party_doctype, party, customer_label, profile_name, sender, reference))
 	values = template_vars.merge(filled, templates.typed_values(structure, typed))
 	problems = templates.validate(structure, values)
 	missing = [s for s in templates.slot_ids(structure) if not _has(values.get(s))]
@@ -92,6 +94,8 @@ def header_file(structure, values, library_rows, user):
 	if not isinstance(choice, dict) or not (choice.get("shared_file") or choice.get("file_url")):
 		frappe.throw(_("Choose the {0} for the header.").format(slot["kind"]))
 	cleanup = None
+	if user is None and not choice.get("shared_file"):
+		frappe.throw(_("An automatic message can use only a file from the shared library for its header."))
 	if choice.get("shared_file"):
 		row = next((r for r in library_rows if r.name == choice["shared_file"]), None)
 		if not row:

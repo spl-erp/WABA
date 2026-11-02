@@ -95,7 +95,7 @@ def send_template(conversation: str, template: str, params: str | list | dict | 
 	return _send_template(conversation, template, params, purposes.PERSON)
 
 
-def _send_template(conversation, template, params, origin):
+def _send_template(conversation, template, params, origin, person=True, sender_label=None, reference=None):
 	"""The one template sender. Notifications, reminders and campaigns call this with their own origin (server side only)."""
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
 	ctx.refuse_if_receive_only()
@@ -109,11 +109,11 @@ def _send_template(conversation, template, params, origin):
 		limit = rules_consent.daily_limit(frappe.db.get_value("Waba Portfolio", ctx.account.portfolio, "messaging_tier"))
 		ctx.refuse_unless(rules_consent.check_daily_limit(parties.started_in_24h(ctx.account.portfolio), limit))
 	c = ctx.conversation
-	structure, values, _missing, problems = templating.prepare(tpl, c.party_doctype, c.party, c.customer_label, c.profile_name, params)
+	structure, values, _missing, problems = templating.prepare(tpl, c.party_doctype, c.party, c.customer_label, c.profile_name, params, sender_label, reference)
 	if problems:
 		frappe.throw("<br>".join(_(p) for p in problems), title=_("Please fix the template values"))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
-	header = templating.header_file(structure, values, _library_rows(frappe.session.user), frappe.session.user)
+	header = templating.header_file(structure, values, _library_rows(frappe.session.user), frappe.session.user if person else None)
 
 	def build():  # the header file is uploaded only now, after the record exists, so a failed upload leaves a Failed row
 		final = dict(values)
@@ -132,10 +132,24 @@ def _send_template(conversation, template, params, origin):
 			"body": templates.render(structure, values)["body"],
 		},
 		origin,
+		sent_by=False if person else None,
 	)
 	if header and header[3] and result.get("ok"):
 		frappe.delete_doc("File", header[3], force=True, ignore_permissions=True)  # a temporary upload; the message keeps no copy of a template header
 	return result
+
+
+AUTOMATIC_ORIGINS = (purposes.NOTIFICATION, purposes.REMINDER, purposes.SYSTEM)
+
+
+def send_automatic(conversation, template, params, origin, sender_label=None, reference=None):
+	"""A template sent by the system (a notification or reminder), not by a person. Server side only: it is not whitelisted,
+	so the browser cannot reach it or choose an origin. Every check of a person's send still runs inside `_send_template`
+	(receive-only, purposes, consent, STOP, approved template, daily limit); only the person-bound parts are replaced:
+	nobody is recorded as the sender, a 'Sender name' value reads `sender_label`, and a header must come from the shared library."""
+	if origin not in AUTOMATIC_ORIGINS:
+		frappe.throw(_("An automatic message must have the origin Notification, Reminder or System."))
+	return _send_template(conversation, template, params, origin, person=False, sender_label=sender_label, reference=reference)
 
 
 @frappe.whitelist()
@@ -151,10 +165,10 @@ def templates_for(conversation: str):
 	)
 
 
-def _template_form(tpl, party_doctype, party, customer_label="", profile_name="", typed=None):
+def _template_form(tpl, party_doctype, party, customer_label="", profile_name="", typed=None, sender_label=None, reference=None):
 	"""Everything the template dialog needs: the template's parts, one entry per value with what the map already filled in,
 	which are still missing, and a preview. Reads only."""
-	structure, values, missing, problems = templating.prepare(tpl, party_doctype, party, customer_label, profile_name, typed)
+	structure, values, missing, problems = templating.prepare(tpl, party_doctype, party, customer_label, profile_name, typed, sender_label, reference)
 	rows = {r["slot"]: r for r in templating.map_rows(tpl)}
 	slots = []
 	for slot in structure["slots"]:
@@ -228,7 +242,7 @@ def mark_read(conversation: str):
 	return {"ok": True}
 
 
-def _deliver(ctx, payload, values, origin=purposes.PERSON, on_created=None):
+def _deliver(ctx, payload, values, origin=purposes.PERSON, on_created=None, sent_by=False):
 	"""Record the message, then send it. `payload` may be a function that builds the payload (a file upload belongs
 	there: it must happen after the record exists and its failure must leave a Failed row, never a Queued one).
 	`on_created(message)` runs once the record exists (a file copy is attached to it there)."""
@@ -244,7 +258,7 @@ def _deliver(ctx, payload, values, origin=purposes.PERSON, on_created=None):
 			"status": "Queued",
 			"sent_at": now,
 			"waba_number": ctx.number.name,
-			"sent_by": frappe.session.user,
+			"sent_by": frappe.session.user if sent_by is False else sent_by,  # False: the logged-in person; None: nobody (an automatic message)
 			"origin": origin,
 			**{"preview": shown, **values},
 		}

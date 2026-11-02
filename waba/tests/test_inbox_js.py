@@ -291,3 +291,27 @@ class TestTemplateDialogHelpers(unittest.TestCase):
 		self.assertEqual(self.lib(f'm.missingSlots({slots}, {{"body.1": "a", "header.media": {{shared_file: "W1"}}, "button.0": " "}})'), ["button.0"])
 		self.assertEqual(self.lib(f'm.missingSlots({slots}, {{}})'), ["body.1", "header.media", "button.0"])
 		self.assertEqual(self.lib(f'm.missingSlots({slots}, {{"body.1": "a", "header.media": {{file_url: "/private/x"}}, "button.0": "z"}})'), [])
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class TestReminderChoices(unittest.TestCase):
+	def lib(self, expression):
+		return js("waba_inbox_lib.js", expression)
+
+	def test_ready_made_times(self):
+		out = self.lib('m.reminderChoices("2026-11-10 12:00:00")')  # a Tuesday
+		self.assertEqual([c["value"] for c in out], ["2026-11-10 14:00:00", "2026-11-11 10:00:00", "2026-11-13 10:00:00", "2026-11-16 10:00:00"])
+
+	def test_next_monday_is_never_today(self):
+		out = self.lib('m.reminderChoices("2026-11-09 08:30:00")')  # a Monday
+		self.assertEqual(out[3]["value"], "2026-11-16 10:00:00")
+		self.assertEqual(out[0]["value"], "2026-11-09 10:30:00")
+
+	def test_crossing_midnight_and_month_end(self):
+		out = self.lib('m.reminderChoices("2026-12-31 23:00:00")')
+		self.assertEqual(out[0]["value"], "2027-01-01 01:00:00")
+		self.assertEqual(out[1]["value"], "2027-01-01 10:00:00")
+
+	def test_bad_input_gives_nothing(self):
+		self.assertEqual(self.lib('m.reminderChoices("soon")'), [])
+		self.assertEqual(self.lib("m.reminderChoices(null)"), [])

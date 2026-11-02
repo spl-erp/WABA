@@ -68,7 +68,7 @@ class TestOriginOnSends(unittest.TestCase):
 			if isinstance(node, ast.FunctionDef) and node.name in ("send_text", "send_template"):
 				names = [a.arg for a in node.args.args]
 				self.assertNotIn("origin", names, node.name)
-		self.assertIn("def _send_template(conversation, template, params, origin)", source)
+		self.assertIn("def _send_template(conversation, template, params, origin", source)
 		self.assertIn("def _send_text(conversation, body, reply_to, origin)", source)
 
 	def test_every_message_is_stored_with_its_origin(self):

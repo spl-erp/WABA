@@ -43,6 +43,14 @@ class TestResolve(unittest.TestCase):
 			v.resolve([row("body.1", kind, "x")], {})
 
 
+class TestDocumentFields(unittest.TestCase):
+	def test_doc_fields_are_reached_with_a_dotted_path_and_do_not_clash_with_the_party(self):
+		ctx = {"record": {"name": "C0001", "customer_name": "Rahul", "doc": {"name": "SAL-QTN-1", "grand_total": 5000, "items": [1]}}}
+		values, missing = v.resolve([row("body.1", v.RECORD, "doc.name"), row("body.2", v.RECORD, "name"), row("body.3", v.RECORD, "doc.grand_total"), row("body.4", v.RECORD, "doc.items"), row("body.5", v.RECORD, "doc.nope")], ctx)
+		self.assertEqual(values, {"body.1": "SAL-QTN-1", "body.2": "C0001", "body.3": "5000"})
+		self.assertEqual(missing, ["body.4", "body.5"])
+
+
 class TestMerge(unittest.TestCase):
 	def test_typed_wins_and_blank_does_not_erase(self):
 		self.assertEqual(v.merge({"body.1": "A", "body.2": "B"}, {"body.1": "Z", "body.2": "  ", "body.3": "C"}), {"body.1": "Z", "body.2": "B", "body.3": "C"})

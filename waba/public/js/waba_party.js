@@ -3,7 +3,7 @@
  * A "WhatsApp" button group (message, record consent, open conversation) and a WhatsApp section in the form dashboard with
  * the consent state and this customer's conversations. Everything is decided on the server (waba.api.party.*): this file
  * only shows what the server says and disables Send, with the reason, when it already knows the answer will be no. */
-(function () {
+;(function () {
 	const DOCTYPES = ["Lead", "Contact", "Customer"];
 	const ROLES = ["Waba Agent", "Waba Supervisor", "Waba Admin", "System Manager"];
 	const esc = (v) => frappe.utils.escape_html(v == null ? "" : String(v));

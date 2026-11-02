@@ -75,7 +75,7 @@ def assets_version() -> str:
 
 	root = os.path.join(frappe.get_app_path("waba"), "public")
 	stamp = 0
-	for relative in ("js/waba_inbox_lib.js", "js/waba_inbox_app.js", "js/waba_template_dialog.js", "js/waba_alerts_core.js", "css/waba_inbox.css"):
+	for relative in ("js/waba_inbox_lib.js", "js/waba_inbox_app.js", "js/waba_template_dialog.js", "js/waba_notify_ui.js", "js/waba_alerts_core.js", "css/waba_inbox.css"):
 		try:
 			stamp = max(stamp, int(os.path.getmtime(os.path.join(root, relative))))
 		except OSError:
