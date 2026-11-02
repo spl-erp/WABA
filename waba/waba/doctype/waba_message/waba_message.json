@@ -31,7 +31,28 @@
   "read_at",
   "column_break_ms2",
   "error_code",
-  "error_message"
+  "error_message",
+  "retried",
+  "file_section",
+  "media_id",
+  "media_mime",
+  "media_filename",
+  "media_size",
+  "column_break_ms3",
+  "media_status",
+  "media_error",
+  "media_tries",
+  "media_file",
+  "media_sha256",
+  "voice",
+  "details_section",
+  "latitude",
+  "longitude",
+  "contacts_json",
+  "column_break_ms4",
+  "interactive_id",
+  "customer_reaction",
+  "our_reaction"
  ],
  "fields": [
   {
@@ -221,11 +242,140 @@
    "fieldtype": "Small Text",
    "label": "What Went Wrong",
    "read_only": 1
+  },
+  {
+   "fieldname": "retried",
+   "fieldtype": "Check",
+   "label": "Sent Again",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "file_section",
+   "fieldtype": "Section Break",
+   "label": "File and details"
+  },
+  {
+   "fieldname": "media_id",
+   "fieldtype": "Data",
+   "label": "Meta File ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "media_mime",
+   "fieldtype": "Data",
+   "label": "File Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "media_filename",
+   "fieldtype": "Data",
+   "label": "File Name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "media_size",
+   "fieldtype": "Int",
+   "label": "File Size (bytes)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ms3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "media_status",
+   "fieldtype": "Select",
+   "label": "File Status",
+   "options": "\nPending\nQueued\nDownloaded\nFailed",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Customer files are downloaded in the background; Failed shows the reason below."
+  },
+  {
+   "fieldname": "media_error",
+   "fieldtype": "Small Text",
+   "label": "File Problem",
+   "read_only": 1
+  },
+  {
+   "fieldname": "media_tries",
+   "fieldtype": "Int",
+   "label": "Download Tries",
+   "read_only": 1,
+   "hidden": 1,
+   "default": "0"
+  },
+  {
+   "fieldname": "media_file",
+   "fieldtype": "Attach",
+   "label": "Saved File",
+   "read_only": 1,
+   "description": "A private file; only people who may see the conversation can open it through the inbox."
+  },
+  {
+   "fieldname": "media_sha256",
+   "fieldtype": "Data",
+   "label": "File Checksum",
+   "read_only": 1
+  },
+  {
+   "fieldname": "voice",
+   "fieldtype": "Check",
+   "label": "Voice Note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Place, contact and reactions"
+  },
+  {
+   "fieldname": "latitude",
+   "fieldtype": "Float",
+   "label": "Latitude",
+   "read_only": 1,
+   "precision": "7"
+  },
+  {
+   "fieldname": "longitude",
+   "fieldtype": "Float",
+   "label": "Longitude",
+   "read_only": 1,
+   "precision": "7"
+  },
+  {
+   "fieldname": "contacts_json",
+   "fieldtype": "Small Text",
+   "label": "Contact Cards",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_ms4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "interactive_id",
+   "fieldtype": "Data",
+   "label": "Button or List Reply ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_reaction",
+   "fieldtype": "Data",
+   "label": "Customer Reaction",
+   "read_only": 1
+  },
+  {
+   "fieldname": "our_reaction",
+   "fieldtype": "Data",
+   "label": "Our Reaction",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-30 18:00:00.000000",
+ "modified": "2026-11-02 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Message",

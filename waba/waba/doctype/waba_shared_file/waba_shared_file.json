@@ -1,0 +1,48 @@
+{
+ "actions": [],
+ "creation": "2026-11-02 11:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "category",
+  "enabled",
+  "column_break_sf1",
+  "scope",
+  "team",
+  "valid_until",
+  "file_section",
+  "file",
+  "description"
+ ],
+ "fields": [
+  {"fieldname": "title", "fieldtype": "Data", "label": "Title", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "category", "fieldtype": "Data", "label": "Category", "in_list_view": 1, "in_standard_filter": 1, "description": "For example Brochure, Price list, Catalogue."},
+  {"fieldname": "enabled", "fieldtype": "Check", "label": "Enabled", "default": "1", "in_list_view": 1},
+  {"fieldname": "column_break_sf1", "fieldtype": "Column Break"},
+  {"fieldname": "scope", "fieldtype": "Select", "label": "Who can send it", "options": "Everyone\nTeam", "default": "Everyone", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "team", "fieldtype": "Link", "label": "Team", "options": "Waba Team", "depends_on": "eval:doc.scope=='Team'", "mandatory_depends_on": "eval:doc.scope=='Team'", "description": "The team and every team below it can send this file."},
+  {"fieldname": "valid_until", "fieldtype": "Date", "label": "Valid until", "description": "After this date the file is no longer offered to reps. Leave blank for no end date."},
+  {"fieldname": "file_section", "fieldtype": "Section Break", "label": "File"},
+  {"fieldname": "file", "fieldtype": "Attach", "label": "File", "reqd": 1, "description": "Image (JPG, PNG), PDF or Office document, video (MP4) or audio, within WhatsApp's size limits. Keep it private."},
+  {"fieldname": "description", "fieldtype": "Small Text", "label": "Note for reps", "description": "Shown beside the title in the picker; never sent to the customer."}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-02 11:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Shared File",
+ "naming_rule": "Expression (old style)",
+ "autoname": "format:WSF-{#####}",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title",
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
+  {"role": "Waba Admin", "read": 1, "write": 1, "create": 1, "delete": 1},
+  {"role": "Waba Supervisor", "read": 1, "write": 1, "create": 1}
+ ]
+}

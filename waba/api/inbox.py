@@ -52,6 +52,18 @@ MESSAGE_FIELDS = [
 	"sent_by",
 	"message_id",
 	"reply_to_message_id",
+	"media_mime",
+	"media_filename",
+	"media_size",
+	"media_status",
+	"media_error",
+	"voice",
+	"latitude",
+	"longitude",
+	"contacts_json",
+	"customer_reaction",
+	"our_reaction",
+	"retried",
 ]
 
 

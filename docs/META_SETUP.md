@@ -35,11 +35,26 @@ In the Waba workspace, in this order:
 2. **Meta App**: name, App ID, App Secret, and a **Verify Token** you invent (a long random string). Save: the
    **Callback URL** fills itself in.
 3. **WhatsApp Account**: name, environment UAT, the portfolio, the Meta app, the WABA ID.
-4. On the Account use **Meta, Test connection**, then **Subscribe webhook**, then **Sync numbers**.
+4. On the Account use **Meta, Test connection**, then **Subscribe webhook**, then **Sync numbers**, then **Sync templates**.
+5. Open the synced **Waba Number**. Sync creates it **switched off**: tick **Enabled**, set the display name, and add
+   people under **Agents** (at least one with role Supervisor). Without agents nobody can see or answer chats.
+6. Give each person a role on their User: **Waba Agent**, **Waba Supervisor** or **Waba Admin**. Then arrange them in the
+   **Waba Team** tree and list the number under the team that owns it (see docs/DEMO_SCRIPT.md for the demo layout).
+7. Check the stored **Callback URL** starts with `https://`. If it shows `http://`, set `host_name` in the site's
+   `site_config.json` to `https://uat-splashjet.sigzencloud.com`, then save the Meta App again.
 
 ## 5. Tell Meta where to send events
 App dashboard, WhatsApp, Configuration, Webhook: paste the **Callback URL** from the ERP and the same **Verify Token**,
-press Verify and save. Then subscribe the **messages** field. Meta calls the ERP once to verify; the ERP answers.
+press Verify and save. Then subscribe the **messages** field. Meta verifies at the app level, so one Meta app has one
+callback URL: make sure the other WhatsApp apps installed on UAT (frappe_whatsapp, whatsapp_chat) are not using the same app.
+
+## 5b. Development mode and the test number
+- An app in **Development** mode only receives webhooks for the test number and for people with a role on the app. Switch
+  the app to **Live** before real customers write.
+- The free test number can message only the (up to 5) recipients you verified. Free text works only inside the 24-hour
+  window; outside it send an approved template. A first message to someone who has never written needs consent recorded
+  on their Lead, Contact or Customer, so for the first test, write to the number from your phone first (that opens the window).
+- Only **Utility** templates with a text body (and optional text header), no buttons, appear in the ERP picker.
 
 ## 6. Try it
 Send a WhatsApp message from your verified mobile to the test number. Open **Webhook Events** in the Waba workspace: a
@@ -49,3 +64,14 @@ new row should appear within seconds. If it does not, open the Error Log and the
 - API version v25.0 (the account field "Graph API version" can be changed).
 - The exact phone-number fields Meta returns for Sync numbers.
 - Whether one Meta app can serve several portfolios.
+
+## If something does not work
+| What you see | Likely cause |
+|---|---|
+| Meta's Verify fails | Callback URL not https or not public; Verify Token differs from the Meta App record |
+| Webhook Events stay empty | Subscribe the messages field; app in Development mode and the sender is not a test recipient |
+| Event row says "Number not set up yet" | Run Sync numbers on the Account |
+| Message arrives but no conversation shows | Number is not Enabled, or you have no Agent Access / team membership |
+| Event rows stay "Pending" | The background worker (queue `short`) is not running |
+| Send fails with "allowed list" (131030) | Recipient not verified on the test number |
+| "Save the access token on the portfolio first" | The Portfolio has no token saved |

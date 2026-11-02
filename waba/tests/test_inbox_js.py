@@ -208,3 +208,68 @@ class TestAlertRoles(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class TestInboxMedia(unittest.TestCase):
+	def lib(self, expression):
+		return js("waba_inbox_lib.js", expression)
+
+	def test_whatsapp_formatting(self):
+		self.assertEqual(self.lib('m.waFormat("a *bold* _it_ ~x~")'), "a <b>bold</b> <i>it</i> <s>x</s>")
+		self.assertEqual(self.lib('m.waFormat("5 * 6 * 7 and snake_case_name")'), "5 * 6 * 7 and snake_case_name")
+		self.assertEqual(self.lib('m.waFormat("*unclosed and _also")'), "*unclosed and _also")
+		self.assertEqual(self.lib('m.waFormat("(*note*).")'), "(<b>note</b>).")
+
+	def test_formatting_never_touches_links(self):
+		html = '<a href="https://x.com/a_b_c_d" target="_blank">https://x.com/a_b_c_d</a> and *ok*'
+		self.assertEqual(self.lib(f"m.waFormat({json.dumps(html)})"), html.replace("*ok*", "<b>ok</b>"))
+
+	def test_formatting_output_stays_escaped(self):
+		out = self.lib('m.waFormat(m.escapeHtml("*<img src=x onerror=1>*"))')
+		self.assertNotIn("<img", out)
+
+	def test_upload_check(self):
+		ok = self.lib('m.checkUpload("application/pdf", 1000)')
+		self.assertTrue(ok["ok"])
+		self.assertEqual(ok["kind"], "document")
+		big = self.lib('m.checkUpload("image/png", 6 * 1024 * 1024)')
+		self.assertFalse(big["ok"])
+		self.assertIn("at most 5.0 MB", big["message"])
+		self.assertFalse(self.lib('m.checkUpload("application/zip", 10)')["ok"])
+		self.assertFalse(self.lib('m.checkUpload("image/png", 0)')["ok"])
+
+	def test_media_view_states(self):
+		base = '{name: "X1", direction: "In", message_type: "image", media_filename: "a.png", media_size: 2048, body: "[image] Hello"'
+		self.assertEqual(self.lib(f'm.mediaView({base}, media_status: "Downloaded"}}).state'), "ready")
+		self.assertEqual(self.lib(f'm.mediaView({base}, media_status: "Queued"}}).state'), "pending")
+		self.assertEqual(self.lib(f'm.mediaView({base}, media_status: "Failed", media_error: "gone"}}).error'), "gone")
+		self.assertEqual(self.lib(f'm.mediaView({base}}}).state'), "none")
+		self.assertEqual(self.lib(f'm.mediaView({base}, media_status: "Downloaded"}}).caption'), "Hello")
+		self.assertEqual(self.lib('m.mediaView({name: "O1", direction: "Out", message_type: "document", body: ""}).state'), "ready")
+		self.assertIsNone(self.lib('m.mediaView({message_type: "text"})'))
+		view = self.lib(f'm.mediaView({base}, media_status: "Downloaded"}})')
+		self.assertTrue(view["url"].startswith("/api/method/waba.api.media.file?message=X1"))
+		self.assertTrue(view["downloadUrl"].endswith("&download=1"))
+
+	def test_places_contacts_reactions(self):
+		self.assertEqual(self.lib("m.placeFor({latitude: 19.07, longitude: 72.87}).url"), "https://www.google.com/maps?q=19.07,72.87")
+		self.assertIsNone(self.lib("m.placeFor({latitude: null, longitude: null})"))
+		self.assertIsNone(self.lib("m.placeFor({latitude: 0, longitude: 0})"))
+		self.assertEqual(self.lib('m.contactsFor({contacts_json: JSON.stringify([{name: "Asha", phones: ["+91 98"]}])})'), [{"name": "Asha", "phones": ["+91 98"]}])
+		self.assertEqual(self.lib('m.contactsFor({contacts_json: "not json"})'), [])
+		self.assertEqual(self.lib('m.reactionsFor({customer_reaction: "👍", our_reaction: "❤️"})'), [{"who": "Customer", "emoji": "👍"}, {"who": "You", "emoji": "❤️"}])
+		self.assertEqual(self.lib("m.reactionsFor({})"), [])
+
+	def test_retry_and_unread_divider(self):
+		self.assertTrue(self.lib('m.canRetry({direction: "Out", status: "Failed", message_type: "text"})'))
+		self.assertTrue(self.lib('m.canRetry({direction: "Out", status: "Failed", message_type: "document"})'))
+		self.assertFalse(self.lib('m.canRetry({direction: "Out", status: "Failed", message_type: "template"})'))
+		self.assertFalse(self.lib('m.canRetry({direction: "Out", status: "Failed", message_type: "text", retried: 1})'))
+		self.assertFalse(self.lib('m.canRetry({direction: "In", status: "Failed", message_type: "text"})'))
+		msgs = '[{name: "a", direction: "In"}, {name: "b", direction: "Out"}, {name: "c", direction: "In"}, {name: "d", direction: "In"}]'
+		self.assertEqual(self.lib(f"m.firstUnread({msgs}, 2)"), "c")
+		self.assertEqual(self.lib(f"m.firstUnread({msgs}, 1)"), "d")
+		self.assertEqual(self.lib(f"m.firstUnread({msgs}, 3)"), "a")
+		self.assertIsNone(self.lib(f"m.firstUnread({msgs}, 0)"))
+		self.assertIsNone(self.lib(f"m.firstUnread({msgs}, 9)"))

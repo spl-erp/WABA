@@ -43,6 +43,12 @@ class TestBodies(unittest.TestCase):
 	def body(self, kind, **part):
 		return inbound.parse_messages(value([{"id": "w", "from": "919876543210", "type": kind, kind: part}]))[0]["body"]
 
+	def test_location_gets_a_map_link(self):
+		text = self.body("location", latitude=19.07, longitude=72.87, name="Shop")
+		self.assertEqual(text, "[location] Shop https://www.google.com/maps?q=19.07,72.87")
+		self.assertEqual(self.body("location", latitude=1, longitude=2), "[location] https://www.google.com/maps?q=1,2")
+		self.assertEqual(self.body("location"), "[location]")
+
 	def test_kinds(self):
 		self.assertEqual(self.body("text", body="Hi there"), "Hi there")
 		self.assertEqual(self.body("image", caption="Invoice"), "[image] Invoice")

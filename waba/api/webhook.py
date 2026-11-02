@@ -44,18 +44,17 @@ def _password(doctype, name, field):
 @rate_limit(limit=1200, seconds=60)
 def receive():
 	request = frappe.local.request
-	form = frappe.form_dict
+	# Read the URL's own query string: for a POST with a JSON body (what Meta sends) Frappe replaces form_dict with the
+	# body, so `?app=` would be lost there and every delivery refused as an unknown app.
+	query = request.args
+	app_key = query.get("app") or frappe.form_dict.get("app")
 	if request.method == "GET":
-		status, body = handle_handshake(
-			form.get("app"), form.get("hub.mode"), form.get("hub.verify_token"), form.get("hub.challenge")
-		)
+		status, body = handle_handshake(app_key, query.get("hub.mode"), query.get("hub.verify_token"), query.get("hub.challenge"))
 		return _text(status, body)
 
 	if (request.content_length or 0) > MAX_BODY_BYTES:
 		return _text(413, "Too large")
-	status, body, _event = handle_delivery(
-		form.get("app"), request.get_data(), request.headers.get("X-Hub-Signature-256")
-	)
+	status, body, _event = handle_delivery(app_key, request.get_data(), request.headers.get("X-Hub-Signature-256"))
 	return _text(status, body)
 
 
@@ -107,7 +106,7 @@ def handle_delivery(app_key, raw_body, signature_header, enqueue=True):
 		frappe.enqueue(
 			"waba.api.webhook.process_event",
 			queue="short",
-			event=event.name,
+			event_name=event.name,  # not `event`: that is a reserved argument of frappe.enqueue and never reaches the job
 			enqueue_after_commit=True,
 			job_id=f"waba-event-{event.name}",
 			deduplicate=True,
@@ -115,10 +114,10 @@ def handle_delivery(app_key, raw_body, signature_header, enqueue=True):
 	return 200, "OK", event.name
 
 
-def process_event(event):
+def process_event(event_name):
 	"""Work out which account and number a stored delivery is about and store the customer messages in it.
 	Delivery status updates (sent, delivered, read) are applied by a later release."""
-	doc = frappe.get_doc("Waba Webhook Event", event)
+	doc = frappe.get_doc("Waba Webhook Event", event_name)
 	if doc.status != "Received":
 		return
 	try:

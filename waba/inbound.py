@@ -6,12 +6,44 @@ loses cleanly to the unique key. Sender matching, the 24-hour window and assignm
 """
 
 import datetime
+import json
 
 import frappe
 from frappe.utils import convert_utc_to_system_timezone, now_datetime
 
-from waba import assignment, locks, matching, parties
+from waba import assignment, locks, matching, media, parties
 from waba.rules import inbound, window
+
+
+def _details(m):
+	"""The file reference, place, contact cards and reply id of a message, as Waba Message field values."""
+	values = {
+		"latitude": m.get("latitude"),
+		"longitude": m.get("longitude"),
+		"interactive_id": m.get("interactive_id"),
+		"contacts_json": json.dumps(m["contacts"], ensure_ascii=False) if m.get("contacts") else None,
+	}
+	if m.get("media_id"):
+		values.update(
+			media_id=m["media_id"],
+			media_mime=m.get("media_mime"),
+			media_filename=m.get("media_filename"),
+			media_sha256=m.get("media_sha256"),
+			voice=m.get("voice") or 0,
+			media_status="Pending",
+		)
+	return values
+
+
+def _react(m):
+	"""Put a customer's reaction on the message it refers to (an empty emoji removes it). True when the target is ours."""
+	target = m.get("reaction_to")
+	row = frappe.db.get_value("Waba Message", {"message_id": target}, ["name", "conversation"], as_dict=True) if target else None
+	if not row:
+		return False
+	frappe.db.set_value("Waba Message", row.name, "customer_reaction", (m.get("body") if m.get("body") != "[reaction]" else "") or None, update_modified=False)
+	assignment.notify(row.conversation, "reaction")
+	return True
 
 
 def store_messages(value, number, event):
@@ -25,13 +57,16 @@ def store_messages(value, number, event):
 		if not key:
 			counts["unidentified"] += 1
 			continue
+		if m["type"] == "reaction":
+			counts["ignored"] = counts.get("ignored", 0) + (0 if _react(m) else 1)  # a reaction is not a new message: no bubble, no unread, no reopening
+			continue
 		if frappe.db.exists("Waba Message", {"message_id": m["message_id"]}):
 			counts["duplicates"] += 1
 			continue
 		conversation = _conversation(key, number, m)
 		sent_at = _when(m["timestamp"])
 		try:
-			frappe.get_doc(
+			stored = frappe.get_doc(
 				{
 					"doctype": "Waba Message",
 					"message_id": m["message_id"],
@@ -45,11 +80,14 @@ def store_messages(value, number, event):
 					"body": m["body"],
 					"reply_to_message_id": m["reply_to"],
 					"event": event,
+					**_details(m),
 				}
 			).insert(ignore_permissions=True)
-		except frappe.DuplicateEntryError:
+		except _CLASH:
 			counts["duplicates"] += 1
 			continue
+		if m.get("media_id"):
+			media.queue_download(stored.name)  # claimed first, so one file is fetched once however often Meta repeats the delivery
 		with locks.conversation(conversation.name):  # one message at a time per conversation: no double assignment
 			conversation.reload()
 			_update_conversation(conversation, m, sent_at, portfolio)
@@ -76,27 +114,54 @@ def _route(conversation, body):
 		frappe.log_error(title="Waba: assigning a conversation failed")
 
 
+# A database unique-key clash on a field (conversation_key, message_id) raises UniqueValidationError; a clash on the
+# record's name raises DuplicateEntryError. Either means "someone else just created it".
+_CLASH = (frappe.DuplicateEntryError, frappe.UniqueValidationError)
+
+
+def _find(key):
+	return frappe.db.get_value("Waba Conversation", {"conversation_key": key}, "name")
+
+
+def _fresh_snapshot():
+	"""Start a new database snapshot, so a row another worker committed a moment ago can be seen (REPEATABLE READ would
+	keep showing the old state). Skipped in a check script that wraps its work in a savepoint it rolls back."""
+	if not frappe.flags.get("waba_no_commit"):
+		frappe.db.commit()  # nosemgrep
+
+
 def _conversation(key, number, m):
-	name = frappe.db.get_value("Waba Conversation", {"conversation_key": key}, "name")
+	"""The conversation for this customer and number, created once even when two deliveries from a new customer arrive in the
+	same second (two workers). One worker at a time creates it; a loser that still hits the unique key reads the winner's row
+	with a locking read, because its own transaction snapshot may predate the winner's commit."""
+	name = _find(key)
 	if name:
 		return frappe.get_doc("Waba Conversation", name)
-	try:
-		return frappe.get_doc(
-			{
-				"doctype": "Waba Conversation",
-				"conversation_key": key,
-				"waba_number": number,
-				"customer_phone": m["phone"],
-				"customer_bsuid": m["bsuid"],
-				"profile_name": m["profile_name"],
-				"customer_label": inbound.customer_label(m["profile_name"], m["phone"], m["bsuid"]),
-				"match_state": "Triage",
-				"status": "Open",
-				"unread_count": 0,
-			}
-		).insert(ignore_permissions=True)
-	except frappe.DuplicateEntryError:
-		return frappe.get_doc("Waba Conversation", frappe.db.get_value("Waba Conversation", {"conversation_key": key}, "name"))
+	with locks.conversation(f"create:{key}"):
+		_fresh_snapshot()
+		name = _find(key)
+		if name:
+			return frappe.get_doc("Waba Conversation", name)
+		try:
+			return frappe.get_doc(
+				{
+					"doctype": "Waba Conversation",
+					"conversation_key": key,
+					"waba_number": number,
+					"customer_phone": m["phone"],
+					"customer_bsuid": m["bsuid"],
+					"profile_name": m["profile_name"],
+					"customer_label": inbound.customer_label(m["profile_name"], m["phone"], m["bsuid"]),
+					"match_state": "Triage",
+					"status": "Open",
+					"unread_count": 0,
+				}
+			).insert(ignore_permissions=True)
+		except _CLASH:
+			name = frappe.db.get_value("Waba Conversation", {"conversation_key": key}, "name", for_update=True)
+			if not name:
+				raise
+			return frappe.get_doc("Waba Conversation", name)
 
 
 def _update_conversation(conversation, m, sent_at, portfolio):

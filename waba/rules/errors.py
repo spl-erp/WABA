@@ -34,6 +34,8 @@ ACTIONS = {
 	131031: (ALERT_ACCOUNT, "Account restricted"),
 	368: (ALERT_ACCOUNT, "Account restricted or disabled for policy"),
 	190: (ALERT_TOKEN, "Access token expired"),
+	131030: (NO_RETRY, "This recipient is not on the allowed list of the test number (add them in Meta's API Setup page, or use a live number)"),
+	133010: (ALERT_ACCOUNT, "This phone number is not registered on the WhatsApp Business Platform yet (finish registration in Meta)"),
 	131062: (FALLBACK_TO_PHONE, "BSUID recipient not supported for this message type"),
 }
 

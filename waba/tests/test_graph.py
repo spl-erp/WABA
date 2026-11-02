@@ -19,8 +19,8 @@ class Fake:
 	def __init__(self, *responses):
 		self.responses, self.calls = list(responses), []
 
-	def __call__(self, method, url, params=None, data=None, json=None, headers=None, timeout=None):
-		self.calls.append({"method": method, "url": url, "params": params, "json": json, "headers": headers, "timeout": timeout})
+	def __call__(self, method, url, params=None, data=None, json=None, headers=None, timeout=None, files=None, stream=None):
+		self.calls.append({"method": method, "url": url, "params": params, "json": json, "headers": headers, "timeout": timeout, "files": files, "data": data, "stream": stream})
 		return self.responses.pop(0)
 
 
@@ -127,3 +127,46 @@ class TestExplain(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class Bytes(Resp):
+	def __init__(self, content, status=200, headers=None):
+		super().__init__({}, status)
+		self.content, self.headers = content, headers or {}
+
+
+class TestMediaCalls(unittest.TestCase):
+	def test_media_info_is_a_get_by_id(self):
+		http = Fake(Resp({"url": "https://lookaside.fbsbx.com/x", "mime_type": "image/jpeg", "id": "M1"}))
+		out = graph.media_info("TOK", "M1", http=http)
+		self.assertEqual(out["mime_type"], "image/jpeg")
+		self.assertTrue(http.calls[0]["url"].endswith("/M1"))
+		self.assertEqual(http.calls[0]["headers"], {"Authorization": "Bearer TOK"})
+
+	def test_download_only_from_meta_hosts_with_the_token(self):
+		http = Fake(Bytes(b"abc"))
+		self.assertEqual(graph.download_media("TOK", "https://lookaside.fbsbx.com/a?b=1", 10, http=http), b"abc")
+		self.assertEqual(http.calls[0]["headers"], {"Authorization": "Bearer TOK"})
+		for bad in ("http://lookaside.fbsbx.com/a", "https://evil.example.com/a", "https://facebook.com.evil.io/a", "file:///etc/passwd", ""):
+			with self.assertRaises(graph.GraphError):
+				graph.download_media("TOK", bad, 10, http=Fake(Bytes(b"x")))
+		self.assertEqual(len(http.calls), 1)  # nothing was requested for the refused addresses' own fake either
+
+	def test_download_size_cap_and_errors(self):
+		with self.assertRaises(graph.GraphError):
+			graph.download_media("T", "https://x.fbcdn.net/a", 2, http=Fake(Bytes(b"abc")))
+		with self.assertRaises(graph.GraphError):
+			graph.download_media("T", "https://x.fbcdn.net/a", 2, http=Fake(Bytes(b"a", headers={"Content-Length": "99"})))
+		with self.assertRaises(graph.GraphError):
+			graph.download_media("T", "https://x.fbcdn.net/a", 20, http=Fake(Bytes(b"", status=404)))
+
+	def test_upload_is_multipart_and_returns_the_id(self):
+		http = Fake(Resp({"id": "U1"}))
+		self.assertEqual(graph.upload_media("TOK", "PN1", "q.pdf", b"%PDF", "application/pdf", http=http), "U1")
+		call = http.calls[0]
+		self.assertTrue(call["url"].endswith("/PN1/media"))
+		self.assertEqual(call["files"]["file"], ("q.pdf", b"%PDF", "application/pdf"))
+		self.assertEqual(call["data"], {"messaging_product": "whatsapp", "type": "application/pdf"})
+		self.assertEqual(call["timeout"], graph.UPLOAD_TIMEOUT)
+		with self.assertRaises(graph.GraphError):
+			graph.upload_media("TOK", "PN1", "q.pdf", b"x", "application/pdf", http=Fake(Resp({})))

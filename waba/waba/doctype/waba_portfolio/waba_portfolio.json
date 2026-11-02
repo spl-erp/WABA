@@ -47,6 +47,7 @@
   {
    "fieldname": "access_token",
    "fieldtype": "Password",
+   "length": 1000,
    "label": "System User Access Token",
    "description": "Generated in Meta Business Settings for a system user with Full control of the WhatsApp accounts. One token covers every account of this portfolio."
   },
@@ -104,7 +105,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-28 12:00:00.000000",
+ "modified": "2026-10-31 15:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Portfolio",

@@ -62,6 +62,7 @@ class WabaToolbar {
 			.then((rows) => {
 				this.numbers = rows || [];
 				this.render_numbers();
+				if (this.handlers.onNumbers) this.handlers.onNumbers(this.numbers);
 			});
 	}
 
@@ -191,7 +192,8 @@ class WabaList {
 
 	render() {
 		if (!this.rows.length) {
-			this.$items.html(`<div class="waba-empty">${__("No conversations here.")}</div>`);
+			const none = this.numbers_known && !this.numbers_known.length;
+			this.$items.html(`<div class="waba-empty">${none ? __("No WhatsApp number is set up for you. Ask an administrator.") : __("No conversations here.")}</div>`);
 			return;
 		}
 		const html = this.rows.map((r) => this.row_html(r)).join("");
@@ -238,11 +240,11 @@ class WabaList {
 // ---------------------------------------------------------------------------------------------- composer
 
 class WabaComposer {
-	constructor($parent, handlers) {
+	constructor($parent, handlers, drafts) {
 		this.handlers = handlers;
 		this.mode = null; // "open" (type and send), "closed" (template only), "no_phone" (cannot reply by user ID)
 		this.kind = "reply"; // "reply" goes to the customer; "note" stays inside the ERP
-		this.drafts = { reply: "", note: "" };
+		this.drafts = drafts || { reply: "", note: "" }; // one object per conversation, kept by the page so switching chats keeps what you typed
 		this.$el = $(`<div class="waba-composer"></div>`).appendTo($parent);
 	}
 
@@ -269,12 +271,14 @@ class WabaComposer {
 	render() {
 		this.close_emoji();
 		this.close_quick();
+		this.close_attach();
 		const note = this.kind === "note";
 		const tabs = `<div class="waba-compose-tabs" role="tablist">
 			<button class="waba-ctab ${note ? "" : "active"}" data-kind="reply">${__("Reply")}</button>
 			<button class="waba-ctab note ${note ? "active" : ""}" data-kind="note">${WabaLib.icon("note", 14)}${__("Note")}</button>
 			<span class="waba-ctab-hint">${note ? __("Notes are only for your team. They are never sent to the customer.") : ""}</span></div>`;
-		const attach = `<button class="waba-circle" disabled title="${__("Attachments arrive in a later release")}" aria-label="${__("Attach a file")}">${WabaLib.icon("paperclip", 19)}</button>`;
+		const can_attach = !note && this.mode === "open";
+		const attach = `<button class="waba-circle waba-attach-btn" ${can_attach ? "" : "disabled"} title="${can_attach ? __("Attach a file, an ERP document or a library file") : note ? __("Notes cannot have files") : __("Files can be sent only while the 24-hour window is open")}" aria-label="${__("Attach")}">${WabaLib.icon("paperclip", 19)}</button>`;
 		const emoji = (enabled) => `<button class="waba-circle waba-emoji-btn" ${enabled ? "" : "disabled"} aria-label="${__("Emoji")}" title="${__("Emoji")}">${WabaLib.icon("smile", 19)}</button>`;
 		const quick = (enabled) => `<button class="waba-circle waba-quick-btn" ${enabled ? "" : "disabled"} aria-label="${__("Quick replies")}" title="${__("Quick replies (type / in an empty box)")}">${WabaLib.icon("zap", 19)}</button>`;
 		this.$text = null;
@@ -311,6 +315,17 @@ class WabaComposer {
 				}
 			});
 			this.$send.on("click", () => this.submit());
+			this.$text.on("paste", (ev) => {
+				const files = (ev.originalEvent.clipboardData && ev.originalEvent.clipboardData.files) || [];
+				if (files.length && !note) {
+					ev.preventDefault();
+					this.handlers.onFile(files[0]);
+				}
+			});
+			this.$el.find(".waba-attach-btn").on("click", (ev) => {
+				ev.stopPropagation();
+				this.toggle_attach();
+			});
 			this.$el.find(".waba-emoji-btn").on("click", (ev) => {
 				ev.stopPropagation();
 				this.toggle_emoji();
@@ -321,6 +336,41 @@ class WabaComposer {
 			});
 		}
 		this.$el.find(".waba-ctab").on("click", (ev) => this.set_kind($(ev.currentTarget).data("kind")));
+	}
+
+	// ---- attach: device file, ERP document, shared library
+	toggle_attach() {
+		if (this.$attach && this.$attach.is(":visible")) return this.close_attach();
+		this.close_emoji();
+		this.close_quick();
+		this.close_attach();
+		this.$attach = $(`<div class="waba-attach" role="menu">
+			<button class="waba-attach-item" data-act="device">${WabaLib.icon("upload", 17)}<span><b>${__("Device file")}</b><i>${__("Photo, PDF, document, audio or video")}</i></span></button>
+			<button class="waba-attach-item" data-act="erp">${WabaLib.icon("file", 17)}<span><b>${__("ERP document")}</b><i>${__("Quotation, order, invoice or delivery note as PDF")}</i></span></button>
+			<button class="waba-attach-item" data-act="library">${WabaLib.icon("folder", 17)}<span><b>${__("Shared library")}</b><i>${__("Approved brochures and price lists")}</i></span></button>
+			<input type="file" class="waba-file-input" hidden accept="image/jpeg,image/png,video/mp4,video/3gpp,audio/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt" /></div>`).appendTo(this.$el);
+		const $input = this.$attach.find(".waba-file-input");
+		$input.on("change", () => {
+			const f = $input[0].files && $input[0].files[0];
+			this.close_attach();
+			if (f) this.handlers.onFile(f);
+		});
+		this.$attach.find(".waba-attach-item").on("click", (ev) => {
+			const act = $(ev.currentTarget).data("act");
+			if (act === "device") return $input.trigger("click");
+			this.close_attach();
+			if (act === "erp") this.handlers.onDocument();
+			else this.handlers.onLibrary();
+		});
+		setTimeout(() => $(document).one("click.wabaattach", (ev) => {
+			if (!$(ev.target).closest(".waba-attach").length) this.close_attach();
+		}), 0);
+	}
+
+	close_attach() {
+		if (this.$attach) this.$attach.remove();
+		this.$attach = null;
+		$(document).off("click.wabaattach");
 	}
 
 	// ---- quick replies: a panel above the box with a search field and the saved answers
@@ -474,20 +524,47 @@ class WabaThread {
 			this.has_more = data.has_more;
 			this.query = "";
 			this.hit = -1;
-			this.$el.html(`<div class="waba-th-head"></div><div class="waba-banner"></div><div class="waba-findbar" hidden></div><div class="waba-messages"></div>`);
+			this.divider_at = null;
+			this.divider_n = 0;
+			this.unseen = 0;
+			this.last_count = 0;
+			this.$el.html(`<div class="waba-th-head"></div><div class="waba-banner"></div><div class="waba-findbar" hidden></div><div class="waba-messages"></div><button class="waba-jump" hidden>${WabaLib.icon("arrowdown", 16)}<span></span></button>`);
 			this.$head = this.$el.find(".waba-th-head");
 			this.$banner = this.$el.find(".waba-banner");
 			this.$find = this.$el.find(".waba-findbar");
 			this.$messages = this.$el.find(".waba-messages");
-			this.composer = new WabaComposer(this.$el, {
-				onSend: (body) => this.handlers.onSend(body),
-				onNote: (body) => this.handlers.onNote(body),
-				onQuick: () => this.handlers.onQuick(),
-				onTemplate: () => this.handlers.onTemplate(),
+			this.composer = new WabaComposer(
+				this.$el,
+				{
+					onSend: (body) => this.handlers.onSend(body),
+					onNote: (body) => this.handlers.onNote(body),
+					onQuick: () => this.handlers.onQuick(),
+					onTemplate: () => this.handlers.onTemplate(),
+					onFile: (file) => this.handlers.onFile(file),
+					onDocument: () => this.handlers.onDocument(),
+					onLibrary: () => this.handlers.onLibrary(),
+				},
+				this.handlers.draftsFor(c.name)
+			);
+			this.$jump = this.$el.find(".waba-jump").on("click", () => this.scroll_latest());
+			this.$messages.on("scroll", () => this.on_scroll());
+			this.$el.on("dragover", (ev) => {
+				if (this.composer && this.composer.mode === "open") ev.preventDefault();
+			});
+			this.$el.on("drop", (ev) => {
+				const files = ev.originalEvent.dataTransfer && ev.originalEvent.dataTransfer.files;
+				if (files && files.length && this.composer && this.composer.mode === "open") {
+					ev.preventDefault();
+					this.handlers.onFile(files[0]);
+				}
 			});
 		}
 		if (!fresh && !this.older.length) this.has_more = data.has_more;
 		this.merge();
+		if (fresh) {
+			this.divider_n = c.unread_count || 0;
+			this.divider_at = WabaLib.firstUnread(this.messages, this.divider_n); // where "N new messages" starts, kept while the chat stays open
+		}
 		this.render_head();
 		this.render_banner();
 		this.render_messages(fresh || opts.stick);
@@ -597,7 +674,10 @@ class WabaThread {
 				const day = WabaLib.dayLabel(item.at);
 				const sep = day && day !== lastDay ? `<div class="waba-day"><span>${waba_e(day)}</span></div>` : "";
 				lastDay = day || lastDay;
-				if (item.type === "message") return sep + this.message_html(item.data);
+				if (item.type === "message") {
+					const divider = item.data.name === this.divider_at ? `<div class="waba-unread-div"><span>${__("{0} new message(s)", [this.divider_n])}</span></div>` : "";
+					return sep + divider + this.message_html(item.data);
+				}
 				return sep + (item.type === "event" ? this.event_html(item.data) : this.note_html(item.data));
 			})
 			.join("");
@@ -607,10 +687,118 @@ class WabaThread {
 			this.handlers.onEarlier(this.oldest_time());
 		});
 		this.$messages.find(".waba-quote").on("click", (ev) => this.jump_to($(ev.currentTarget).data("ref")));
+		this.bind_message_actions();
 		if (this.query) this.collect_hits();
-		if (keepPosition) return;
-		if (stick || nearBottom) box.scrollTop = box.scrollHeight;
-		else box.scrollTop = previousTop;
+		const count = this.messages.length;
+		if (keepPosition) {
+			this.last_count = count;
+			return;
+		}
+		if (stick || nearBottom) {
+			box.scrollTop = box.scrollHeight;
+			this.unseen = 0;
+		} else {
+			box.scrollTop = previousTop;
+			if (count > this.last_count) this.unseen += count - this.last_count; // new messages arrived while reading older ones
+		}
+		this.last_count = count;
+		this.on_scroll();
+	}
+
+	/** The "jump to latest" pill: shown when scrolled well above the end, with how many new messages came meanwhile. */
+	on_scroll() {
+		if (!this.$jump) return;
+		const box = this.$messages[0];
+		const away = box.scrollHeight - box.scrollTop - box.clientHeight;
+		if (away < 160) this.unseen = 0;
+		this.$jump.prop("hidden", away < 160);
+		this.$jump.find("span").text(this.unseen ? __("{0} new", [this.unseen]) : __("Latest"));
+	}
+
+	scroll_latest() {
+		const box = this.$messages[0];
+		box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
+		this.unseen = 0;
+	}
+
+	bind_message_actions() {
+		const $m = this.$messages;
+		$m.find(".waba-media-open").on("click", (ev) => {
+			ev.preventDefault();
+			this.lightbox($(ev.currentTarget).attr("href"));
+		});
+		$m.find(".waba-media-retry").on("click", (ev) => this.handlers.onMediaRetry($(ev.currentTarget).data("id")));
+		$m.find(".waba-retry").on("click", (ev) => {
+			$(ev.currentTarget).prop("disabled", true);
+			this.handlers.onRetry($(ev.currentTarget).data("id"));
+		});
+		$m.find(".waba-react-btn").on("click", (ev) => {
+			ev.stopPropagation();
+			this.react_picker($(ev.currentTarget));
+		});
+	}
+
+	lightbox(src) {
+		$(".waba-lightbox").remove();
+		const $box = $(`<div class="waba-lightbox" role="dialog"><button class="waba-lightbox-x" aria-label="${__("Close")}">${WabaLib.icon("x", 22)}</button><img alt="" /></div>`).appendTo(document.body);
+		$box.find("img").attr("src", src);
+		const close = () => {
+			$box.remove();
+			$(document).off("keydown.wabalightbox");
+		};
+		$box.on("click", close);
+		$(document).on("keydown.wabalightbox", (ev) => ev.key === "Escape" && close());
+	}
+
+	react_picker($anchor) {
+		$(".waba-react-pop").remove();
+		const id = $anchor.data("id");
+		const $pop = $(`<div class="waba-react-pop">${["👍", "❤️", "😂", "😮", "🙏", "✅"].map((e) => `<button data-e="${e}">${e}</button>`).join("")}<button data-e="" title="${__("Remove my reaction")}">${WabaLib.icon("x", 14)}</button></div>`).appendTo(document.body);
+		const r = $anchor[0].getBoundingClientRect();
+		$pop.css({ top: Math.max(8, r.top - 46) + "px", left: Math.max(8, Math.min(window.innerWidth - 270, r.left - 100)) + "px" });
+		$pop.find("button").on("click", (ev) => {
+			this.handlers.onReact(id, String($(ev.currentTarget).data("e") || ""));
+			$pop.remove();
+		});
+		setTimeout(() => $(document).one("click.wabareact", () => $pop.remove()), 0);
+	}
+
+	/** What goes inside the bubble: the file, place or contact cards when there are any, then the text. */
+	content_html(m) {
+		const mv = WabaLib.mediaView(m);
+		const place = WabaLib.placeFor(m);
+		const cards = m.message_type === "contacts" ? WabaLib.contactsFor(m) : [];
+		const format = (text) => WabaLib.waFormat(WabaLib.highlight(WabaLib.linkify(text || ""), this.query));
+		let out = "";
+		let text = m.body || "";
+		if (mv && mv.state !== "none") {
+			out += this.media_html(mv, m);
+			text = mv.caption;
+		} else if (place) {
+			const label = String(m.body || "").replace(/^\[location\]\s*/, "").replace(/https?:\/\/\S+$/, "").trim();
+			out += `<a class="waba-place" href="${waba_e(place.url)}" target="_blank" rel="noopener noreferrer">${WabaLib.icon("pin", 20)}<span><b>${__("Location")}</b><i>${waba_e(label || `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`)}</i></span>${WabaLib.icon("external", 14)}</a>`;
+			text = "";
+		} else if (cards.length) {
+			out += cards.map((c) => `<div class="waba-contact">${WabaLib.icon("contact", 20)}<span><b>${waba_e(c.name || __("Contact"))}</b><i>${waba_e(c.phones.join(", "))}</i></span></div>`).join("");
+			text = "";
+		} else if (m.direction === "In") {
+			const note = WabaLib.kindNote(m.message_type, m.body);
+			if (note) return `<span class="waba-kindnote">${waba_e(__(note.label))} (${__("not shown")})</span>${note.rest ? " " + format(note.rest) : ""}`;
+		}
+		return out + (text ? `<div class="waba-caption">${format(text)}</div>` : "");
+	}
+
+	media_html(mv, m) {
+		const pick = { image: "image", sticker: "image", video: "play", audio: "mic", document: "file" }[mv.kind];
+		if (mv.state === "pending") return `<div class="waba-media-wait">${WabaLib.icon(pick, 18)}<span>${__("Fetching the file...")}</span></div>`;
+		if (mv.state === "failed")
+			return `<div class="waba-media-wait failed">${WabaLib.icon("warning", 18)}<span>${__("The file could not be fetched")}${mv.error ? ": " + waba_e(mv.error) : ""} <button class="waba-link waba-media-retry" data-id="${waba_e(m.name)}">${__("Try again")}</button></span></div>`;
+		const url = waba_e(mv.url);
+		if (mv.kind === "image" || mv.kind === "sticker")
+			return `<a class="waba-media-open" href="${url}"><img class="waba-media-img ${mv.kind === "sticker" ? "sticker" : ""}" src="${url}" alt="${waba_e(mv.name || __("Photo"))}" loading="lazy" /></a>`;
+		if (mv.kind === "video") return `<video class="waba-media-video" controls preload="metadata" src="${url}"></video>`;
+		if (mv.kind === "audio") return `<div class="waba-media-audio">${WabaLib.icon(mv.voice ? "mic" : "play", 18)}<audio controls preload="none" src="${url}"></audio></div>`;
+		return `<a class="waba-doc" href="${waba_e(mv.downloadUrl)}" target="_blank" rel="noopener noreferrer">${WabaLib.icon("file", 24)}<span><b>${waba_e(mv.name || __("Document"))}</b><i>${waba_e([mv.size, (mv.mime.split("/")[1] || "").toUpperCase()].filter(Boolean).join(" · "))}</i></span>${WabaLib.icon("download", 17)}</a>`;
 	}
 
 	/** Scroll ONLY the message list so that `el` is in the middle. (the browser's scroll-into-view call would also scroll the page around it.) */
@@ -706,16 +894,20 @@ class WabaThread {
 		const senderName = out ? waba_e(m.sent_by_name || __("Sent")) : "";
 		const sender = out && !failed ? `<div class="waba-sender">${senderName}</div>` : "";
 		const err = failed
-			? `<div class="waba-errorbox">${WabaLib.icon("warning", 15)}<span>${__("Not delivered")}: ${waba_e(m.error_message || __("Meta did not accept this message."))}</span></div>`
+			? `<div class="waba-errorbox">${WabaLib.icon("warning", 15)}<span>${__("Not delivered")}: ${waba_e(m.error_message || __("Meta did not accept this message."))}${WabaLib.canRetry(m) ? ` <button class="waba-link waba-retry" data-id="${waba_e(m.name)}">${__("Send again")}</button>` : ""}</span></div>`
 			: "";
 		const tickHtml = tick ? `<span class="waba-tick ${tick.tone}" title="${waba_e(__(tick.label))}">${WabaLib.icon(tick.icon, 16)}</span>` : "";
 		const quote = m.reply_to_message_id
 			? `<div class="waba-quote" data-ref="${waba_e(m.reply_to_message_id)}"><b>${waba_e(m.reply_to_sender || (m.reply_to_direction === "Out" ? __("You") : __("Customer")))}</b><span>${waba_e(m.reply_to_body || __("Original message"))}</span></div>`
 			: "";
-		const text = WabaLib.highlight(WabaLib.linkify(m.body || ""), this.query);
+		const text = this.content_html(m);
+		const react_on = m.direction === "In" && m.message_id && this.data && this.data.conversation && this.data.conversation.window_open;
+		const react_btn = react_on ? `<button class="waba-react-btn" data-id="${waba_e(m.name)}" title="${__("React")}" aria-label="${__("React")}">${WabaLib.icon("smile", 14)}</button>` : "";
+		const chips = WabaLib.reactionsFor(m).map((r) => `<span class="waba-chip" title="${waba_e(__(r.who))}">${waba_e(r.emoji)}</span>`).join("");
+		const info = [m.sent_at && `${__("Sent")} ${m.sent_at}`, m.delivered_at && `${__("Delivered")} ${m.delivered_at}`, m.read_at && `${__("Read")} ${m.read_at}`].filter(Boolean).join(" · ");
 		return `<div class="waba-msg ${out ? "out" : "in"} ${failed ? "failed" : ""}" data-id="${waba_e(m.name)}" data-mid="${waba_e(m.message_id || "")}">
-			<div class="waba-bubble">${sender}${tag}${quote}<div class="waba-text">${text}</div>${err}
-				<div class="waba-foot">${failed ? `<span class="waba-foot-name">${senderName}</span>` : ""}<span class="waba-foot-right"><span>${waba_e(WabaLib.clockLabel(m.sent_at))}</span> ${tickHtml}</span></div></div></div>`;
+			<div class="waba-bubble">${react_btn}${sender}${tag}${quote}<div class="waba-text">${text}</div>${chips ? `<div class="waba-reacts">${chips}</div>` : ""}${err}
+				<div class="waba-foot">${failed ? `<span class="waba-foot-name">${senderName}</span>` : ""}<span class="waba-foot-right"><span title="${waba_e(info)}">${waba_e(WabaLib.clockLabel(m.sent_at))}</span> ${tickHtml}</span></div></div></div>`;
 	}
 }
 
@@ -726,6 +918,7 @@ class WabaInbox {
 		this.page = page;
 		this.wrapper = wrapper;
 		this.current = null;
+		this.drafts = {}; // what was typed per conversation, kept while the page is open
 		this.number = "";
 		this.search = "";
 		this.$shell = $(`<div class="waba-shell"><div class="waba-inbox"></div></div>`);
@@ -741,6 +934,12 @@ class WabaInbox {
 			},
 			onRefresh: () => this.refresh(),
 			onAvailable: (value) => this.set_available(value),
+			onNumbers: (rows) => {
+				if (this.list) {
+					this.list.numbers_known = rows;
+					this.list.render();
+				}
+			},
 		});
 		this.$shell.prepend(this.toolbar.$el);
 		this.$panels = this.$shell.find(".waba-inbox");
@@ -761,6 +960,13 @@ class WabaInbox {
 			onTransfer: () => this.transfer_dialog(),
 			onStatus: (status) => this.set_status(status),
 			onTemplate: () => this.template_dialog(),
+			onFile: (file) => this.file_dialog(file),
+			onDocument: () => this.document_dialog(),
+			onLibrary: () => this.library_dialog(),
+			onReact: (id, emoji) => this.react(id, emoji),
+			onRetry: (id) => this.retry_message(id),
+			onMediaRetry: (id) => this.retry_media(id),
+			draftsFor: (name) => (this.drafts[name] = this.drafts[name] || { reply: "", note: "" }),
 			onEarlier: (before) => this.load_earlier(before),
 			onOpenRecord: () => this.open_record(),
 			onMore: ($anchor) => this.more_menu($anchor),
@@ -1044,6 +1250,158 @@ class WabaInbox {
 				return !!out.ok;
 			})
 			.catch(() => false);
+	}
+
+	// ---- files: device upload with a preview, ERP documents, the shared library
+
+	/** Upload to a private file (Frappe's own endpoint); resolves with the File's data. */
+	upload_private(file) {
+		return new Promise((resolve, reject) => {
+			const form = new FormData();
+			form.append("file", file, file.name);
+			form.append("is_private", "1");
+			form.append("folder", "Home");
+			const xhr = new XMLHttpRequest();
+			xhr.open("POST", "/api/method/upload_file");
+			xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
+			xhr.setRequestHeader("Accept", "application/json");
+			xhr.onload = () => {
+				let body = {};
+				try {
+					body = JSON.parse(xhr.responseText);
+				} catch (e) {}
+				if (xhr.status >= 200 && xhr.status < 300 && body.message && body.message.file_url) return resolve(body.message);
+				let why = "";
+				try {
+					why = JSON.parse(JSON.parse(body._server_messages || "[]")[0] || "{}").message || "";
+				} catch (e) {}
+				reject(new Error(why.replace(/<[^>]+>/g, "") || __("The upload was refused.")));
+			};
+			xhr.onerror = () => reject(new Error(__("The upload could not be sent. Check your connection.")));
+			xhr.send(form);
+		});
+	}
+
+	file_dialog(file) {
+		const check = WabaLib.checkUpload(file.type, file.size);
+		if (!check.ok) {
+			frappe.msgprint({ title: __("This file cannot be sent"), message: waba_e(check.message), indicator: "red" });
+			return;
+		}
+		const captionable = ["image", "video", "document"].includes(check.kind);
+		const preview = URL.createObjectURL(file);
+		const dialog = new frappe.ui.Dialog({
+			title: __("Send {0}", [file.name]),
+			fields: [
+				{ fieldtype: "HTML", fieldname: "preview" },
+				{ fieldname: "caption", label: __("Caption (optional)"), fieldtype: "Small Text", hidden: captionable ? 0 : 1 },
+			],
+			primary_action_label: __("Send"),
+			primary_action: (v) => {
+				dialog.get_primary_btn().prop("disabled", true);
+				this.upload_private(file)
+					.then((up) => this.send("send_file", { file_url: up.file_url, caption: v.caption || "", filename: file.name }))
+					.then((ok) => {
+						if (ok) dialog.hide();
+						else dialog.get_primary_btn().prop("disabled", false);
+					})
+					.catch((e) => {
+						dialog.get_primary_btn().prop("disabled", false);
+						frappe.msgprint({ title: __("Not sent"), message: waba_e(e.message), indicator: "red" });
+					});
+			},
+		});
+		const shown =
+			check.kind === "image"
+				? `<img src="${preview}" alt="" style="max-width:100%;max-height:260px;border-radius:10px;display:block;margin:0 auto" />`
+				: `<div class="waba-doc" style="pointer-events:none">${WabaLib.icon(check.kind === "video" ? "play" : check.kind === "audio" ? "mic" : "file", 24)}<span><b>${waba_e(file.name)}</b><i>${waba_e(WabaLib.humanSize(file.size))}</i></span></div>`;
+		dialog.get_field("preview").$wrapper.html(shown);
+		dialog.onhide = () => URL.revokeObjectURL(preview);
+		dialog.show();
+	}
+
+	document_dialog() {
+		const types = ["Quotation", "Sales Order", "Sales Invoice", "Delivery Note"];
+		const dialog = new frappe.ui.Dialog({
+			title: __("Send an ERP document as a PDF"),
+			fields: [
+				{
+					fieldname: "doctype",
+					label: __("Document type"),
+					fieldtype: "Select",
+					options: types.join("\n"),
+					default: types[0],
+					reqd: 1,
+					change: () => {
+						const f = dialog.get_field("name");
+						f.df.options = dialog.get_value("doctype");
+						dialog.set_value("name", "");
+						f.refresh();
+					},
+				},
+				{ fieldname: "name", label: __("Document"), fieldtype: "Link", options: types[0], reqd: 1 },
+				{ fieldname: "caption", label: __("Caption (optional)"), fieldtype: "Small Text" },
+			],
+			primary_action_label: __("Send PDF"),
+			primary_action: (v) => {
+				dialog.get_primary_btn().prop("disabled", true);
+				this.send("send_document", { doctype: v.doctype, name: v.name, caption: v.caption || "" }).then((ok) => {
+					if (ok) dialog.hide();
+					else dialog.get_primary_btn().prop("disabled", false);
+				});
+			},
+		});
+		dialog.show();
+	}
+
+	library_dialog() {
+		frappe.call({ method: "waba.api.send.shared_files" }).then((r) => {
+			const files = r.message || [];
+			if (!files.length) {
+				frappe.msgprint(__("The shared library has no file for you yet. A supervisor can add files in the Waba workspace, Shared Files."));
+				return;
+			}
+			const label = (f) => `${f.category ? f.category + " - " : ""}${f.title} (${f.size})`;
+			const byLabel = Object.fromEntries(files.map((f) => [label(f), f]));
+			const dialog = new frappe.ui.Dialog({
+				title: __("Send a file from the shared library"),
+				fields: [
+					{ fieldname: "file", label: __("File"), fieldtype: "Select", options: files.map(label).join("\n"), default: label(files[0]), reqd: 1 },
+					{ fieldname: "caption", label: __("Caption (optional)"), fieldtype: "Small Text" },
+				],
+				primary_action_label: __("Send"),
+				primary_action: (v) => {
+					dialog.get_primary_btn().prop("disabled", true);
+					this.send("send_library_file", { shared_file: byLabel[v.file].name, caption: v.caption || "" }).then((ok) => {
+						if (ok) dialog.hide();
+						else dialog.get_primary_btn().prop("disabled", false);
+					});
+				},
+			});
+			dialog.show();
+		});
+	}
+
+	react(id, emoji) {
+		frappe
+			.call({ method: "waba.api.send.send_reaction", args: { message: id, emoji }, freeze: false })
+			.then(() => this.open_thread(this.current, { quiet: true }));
+	}
+
+	retry_message(id) {
+		frappe
+			.call({ method: "waba.api.send.retry_message", args: { message: id }, freeze: false })
+			.then((r) => {
+				const out = r.message || {};
+				if (out.error) frappe.msgprint({ title: __("Not sent"), message: waba_e(out.error), indicator: "red" });
+				this.open_thread(this.current, { quiet: true });
+				this.load_list();
+			})
+			.catch(() => this.open_thread(this.current, { quiet: true }));
+	}
+
+	retry_media(id) {
+		frappe.call({ method: "waba.api.media.retry", args: { message: id }, freeze: false }).then(() => this.open_thread(this.current, { quiet: true }));
 	}
 
 	template_dialog() {

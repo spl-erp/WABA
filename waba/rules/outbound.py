@@ -50,6 +50,13 @@ def check_free_text(body, last_inbound_at, now):
 	return True, None, None
 
 
+def check_media_send(last_inbound_at, now):
+	"""(ok, code, message). A file, like free text, can only be sent while the 24-hour window is open."""
+	if not window.is_window_open(last_inbound_at, now):
+		return False, WINDOW_CLOSED, "The 24-hour window is closed. Send an approved template instead."
+	return True, None, None
+
+
 def check_recipient(phone):
 	"""(ok, code, message). Sending needs a phone number; a customer known only by WhatsApp user ID cannot be written to yet."""
 	if wa_digits(phone):
@@ -104,6 +111,36 @@ def template_payload(to_phone, name, language, params):
 			{"type": "body", "parameters": [{"type": "text", "text": str(p).strip()} for p in params]}
 		]
 	return payload
+
+
+def media_payload(to_phone, kind, media_id, caption="", filename="", reply_to_message_id=None):
+	"""A media message that refers to a file already uploaded to Meta (by id, never by public link)."""
+	body = {"id": media_id}
+	if caption and kind in ("image", "video", "document"):
+		body["caption"] = caption.strip()
+	if filename and kind == "document":
+		body["filename"] = filename
+	payload = {
+		"messaging_product": "whatsapp",
+		"recipient_type": "individual",
+		"to": wa_digits(to_phone),
+		"type": kind,
+		kind: body,
+	}
+	if reply_to_message_id:
+		payload["context"] = {"message_id": reply_to_message_id}
+	return payload
+
+
+def reaction_payload(to_phone, message_id, emoji):
+	"""React to a message with an emoji; an empty emoji removes the reaction."""
+	return {
+		"messaging_product": "whatsapp",
+		"recipient_type": "individual",
+		"to": wa_digits(to_phone),
+		"type": "reaction",
+		"reaction": {"message_id": message_id, "emoji": emoji or ""},
+	}
 
 
 def read_receipt_payload(message_id):

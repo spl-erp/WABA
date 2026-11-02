@@ -414,3 +414,72 @@
 
 /* the top bar sits above the two panels so the number list (and anything else it opens) is never hidden behind them */
 .waba-shell > .waba-topbar { z-index: 6; }
+
+.waba-kindnote { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.06); color: inherit; }
+
+/* ---- C9: files, places, contacts, reactions, attach menu, unread divider, jump pill */
+.waba-thread { position: relative; }
+.waba-composer { position: relative; }
+.waba-link { background: none; border: 0; padding: 0; color: var(--w-green-d); font-weight: 700; text-decoration: underline; cursor: pointer; font-size: inherit; }
+.waba-link:disabled { opacity: 0.5; cursor: default; }
+.waba-caption { white-space: pre-wrap; }
+.waba-media-open { display: block; line-height: 0; margin: 2px -6px 4px; }
+.waba-media-img { display: block; max-width: min(320px, 100%); max-height: 320px; border-radius: 10px; object-fit: cover; background: var(--w-surface-2); }
+.waba-media-img.sticker { max-width: 150px; background: transparent; }
+.waba-media-video { display: block; max-width: min(320px, 100%); max-height: 320px; border-radius: 10px; margin: 2px 0 4px; background: #000; }
+.waba-media-audio { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; color: var(--w-green-d); }
+.waba-media-audio audio { height: 38px; max-width: 240px; }
+.waba-media-wait { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--w-ink-2); padding: 6px 0; }
+.waba-media-wait.failed { color: var(--w-red); }
+.waba-doc, .waba-place, .waba-contact {
+	display: flex; align-items: center; gap: 10px; min-width: 200px; max-width: 300px; padding: 9px 11px; margin: 2px 0 4px; border-radius: 10px;
+	background: var(--w-surface-2); color: var(--w-ink); text-decoration: none; border: 1px solid var(--w-line);
+}
+.waba-doc:hover, .waba-place:hover { border-color: var(--w-green); color: var(--w-ink); text-decoration: none; }
+.waba-doc > span, .waba-place > span, .waba-contact > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.waba-doc b, .waba-place b, .waba-contact b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waba-doc i, .waba-place i, .waba-contact i { font-size: 12px; font-style: normal; color: var(--w-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waba-doc > .waba-i:first-child, .waba-place > .waba-i:first-child, .waba-contact > .waba-i:first-child { color: var(--w-green-d); flex: none; }
+.waba-bubble { position: relative; }
+.waba-react-btn {
+	position: absolute; top: 4px; right: -34px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--w-line); background: var(--w-surface);
+	color: var(--w-ink-3); display: none; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+}
+.waba-msg.in:hover .waba-react-btn { display: inline-flex; }
+.waba-react-btn:hover { color: var(--w-green-d); border-color: var(--w-green); }
+.waba-reacts { display: flex; gap: 4px; margin: 2px 0 0; }
+.waba-reacts .waba-chip { padding: 0 7px; font-size: 14px; background: var(--w-surface); border: 1px solid var(--w-line); }
+.waba-react-pop {
+	position: fixed; z-index: 1200; display: flex; gap: 2px; padding: 6px; background: var(--w-surface, #fff); border: 1px solid var(--w-line, #e5e7eb);
+	border-radius: 999px; box-shadow: 0 10px 30px rgba(18, 38, 63, 0.22);
+}
+.waba-react-pop button { border: 0; background: transparent; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; color: var(--w-ink-2, #555); }
+.waba-react-pop button:hover { background: var(--w-surface-2, #f3f4f6); }
+.waba-attach {
+	position: absolute; left: 14px; bottom: calc(100% + 8px); z-index: 40; width: min(340px, calc(100% - 28px)); padding: 6px;
+	background: var(--w-surface); border: 1px solid var(--w-line); border-radius: 14px; box-shadow: 0 14px 36px rgba(18, 38, 63, 0.2);
+}
+.waba-attach-item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 10px 12px; border: 0; background: transparent; border-radius: 10px; color: var(--w-ink); cursor: pointer; }
+.waba-attach-item:hover { background: var(--w-surface-2); }
+.waba-attach-item > .waba-i { color: var(--w-green-d); flex: none; }
+.waba-attach-item span { display: flex; flex-direction: column; min-width: 0; }
+.waba-attach-item b { font-size: 13.5px; }
+.waba-attach-item i { font-size: 12px; font-style: normal; color: var(--w-ink-3); }
+.waba-unread-div { display: flex; align-items: center; gap: 10px; margin: 10px 0 6px; color: var(--w-green-d); font-size: 12px; font-weight: 700; }
+.waba-unread-div::before, .waba-unread-div::after { content: ""; flex: 1; height: 1px; background: rgba(37, 211, 102, 0.45); }
+.waba-jump {
+	position: absolute; right: 18px; bottom: 92px; z-index: 20; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+	border: 1px solid var(--w-line); background: var(--w-surface); color: var(--w-ink); box-shadow: var(--w-shadow); font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.waba-jump[hidden] { display: none; }
+.waba-jump:hover { border-color: var(--w-green); color: var(--w-green-d); }
+.waba-lightbox { position: fixed; inset: 0; z-index: 1300; background: rgba(0, 0, 0, 0.86); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+.waba-lightbox img { max-width: 94vw; max-height: 92vh; border-radius: 8px; }
+.waba-lightbox-x { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.16); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+@media (max-width: 767px) {
+	.waba-react-btn { right: 6px; top: -12px; }
+	.waba-msg.in .waba-react-btn { display: inline-flex; width: 24px; height: 24px; }
+	.waba-attach { left: 10px; }
+	.waba-jump { bottom: 120px; right: 12px; }
+	.waba-media-img, .waba-media-video { max-width: 100%; }
+}

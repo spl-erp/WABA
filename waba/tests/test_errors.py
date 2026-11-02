@@ -57,3 +57,12 @@ class TestErrors(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestTestNumberCodes(unittest.TestCase):
+	def test_allowed_list_and_unregistered_codes_are_explained(self):
+		from waba.rules import errors
+
+		self.assertEqual(errors.classify(131030)[0], errors.NO_RETRY)
+		self.assertIn("allowed list", errors.classify(131030)[1])
+		self.assertEqual(errors.classify(133010)[0], errors.ALERT_ACCOUNT)

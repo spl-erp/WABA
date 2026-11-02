@@ -89,6 +89,14 @@
   },
   {
    "type": "Link",
+   "label": "Shared Files",
+   "link_type": "DocType",
+   "link_to": "Waba Shared File",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
    "label": "Templates",
    "link_type": "DocType",
    "link_to": "Waba Template",

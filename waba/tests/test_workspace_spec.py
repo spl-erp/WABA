@@ -69,7 +69,7 @@ class TestMerge(unittest.TestCase):
 
 	def test_a_missing_link_goes_under_its_own_card(self):
 		rows = spec.link_rows()
-		without = [r for r in rows if r.get("label") != "Quick Replies"]
+		without = [r for r in rows if r.get("label") != "Shared Files"]
 		merged = spec.merge_links(without, rows)
 		labels = [r["label"] for r in merged]
 		self.assertEqual(labels, [r["label"] for r in rows])

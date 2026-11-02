@@ -21,7 +21,7 @@ CORE_DOCTYPES = {"User", "DocType"}
 EXPECTED = {
 	"Waba Portfolio", "Waba Meta App", "Waba Account", "Waba Number", "Waba Agent Access", "Waba Routing Rule", "Waba Webhook Event",
 	"Waba Identity", "Waba Conversation", "Waba Message", "Waba Template",
-	"Waba Team", "Waba Team Number", "Waba Team Member", "Waba Note", "Waba Quick Reply",
+	"Waba Team", "Waba Team Number", "Waba Team Member", "Waba Note", "Waba Quick Reply", "Waba Shared File",
 }
 CHILD_TABLES = ("Waba Agent Access", "Waba Routing Rule", "Waba Team Number", "Waba Team Member")
 SECRET_FIELDS = {"Waba Portfolio": {"access_token"}, "Waba Meta App": {"app_secret", "verify_token"}}

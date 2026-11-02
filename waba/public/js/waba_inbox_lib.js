@@ -36,6 +36,15 @@
 		undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>',
 		note: '<path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h6"/><path d="M8 13h8"/><path d="M8 17h5"/>',
 		user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+		file: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/>',
+		image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',
+		play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+		mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/>',
+		download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+		upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
+		pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+		contact: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+		folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 	};
 
 	function icon(name, size, cls) {
@@ -135,6 +144,15 @@
 	}
 
 	/** "14:39" from "2026-10-28 14:39:21". */
+	// A customer's file is not downloaded yet: say what it is instead of showing a bare "[image]".
+	const KIND_LABELS = { image: "Photo", video: "Video", audio: "Voice note or audio", document: "Document", sticker: "Sticker", contacts: "Contact card", order: "Order", unsupported: "Message type not supported", system: "System message" };
+	function kindNote(type, body) {
+		const label = KIND_LABELS[type];
+		if (!label) return null;
+		const rest = String(body || "").replace(new RegExp("^\\[" + type + "\\]\\s*"), "");
+		return { label, rest };
+	}
+
 	function clockLabel(text) {
 		const m = /\s(\d{2}:\d{2})/.exec(String(text || ""));
 		return m ? m[1] : "";
@@ -221,5 +239,113 @@
 		return (list || []).filter((r) => String(r.title || "").toLowerCase().includes(q) || String(r.body || "").toLowerCase().includes(q));
 	}
 
-	return { timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, dayLabel, clockLabel, AVATAR_COLORS };
+	// ------------------------------------------------------------------ files, places, contacts, reactions
+	const MEDIA_KINDS = ["image", "video", "audio", "document", "sticker"];
+	const MB = 1024 * 1024;
+	// Meta's per-kind limits (UNVERIFIED until the live test); the server enforces them again.
+	const UPLOAD_LIMITS = { image: 5 * MB, video: 16 * MB, audio: 16 * MB, document: 100 * MB, sticker: 500 * 1024 };
+	const MIME_KIND = {
+		"image/jpeg": "image", "image/png": "image", "video/mp4": "video", "video/3gpp": "video",
+		"audio/aac": "audio", "audio/amr": "audio", "audio/mpeg": "audio", "audio/mp4": "audio", "audio/ogg": "audio",
+		"application/pdf": "document", "application/msword": "document", "application/vnd.ms-excel": "document", "application/vnd.ms-powerpoint": "document", "text/plain": "document",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": "document",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "document",
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation": "document",
+		"image/webp": "sticker",
+	};
+
+	function humanSize(n) {
+		n = Number(n) || 0;
+		if (n < 1024) return `${n} B`;
+		if (n < MB) return `${Math.round(n / 1024)} KB`;
+		return `${(n / MB).toFixed(1)} MB`;
+	}
+
+	/** {ok, kind, message} for a file a person picked, before anything is uploaded. */
+	function checkUpload(mime, size) {
+		const type = String(mime || "").split(";")[0].trim().toLowerCase();
+		const kind = MIME_KIND[type];
+		if (!kind) return { ok: false, kind: null, message: "WhatsApp cannot send this kind of file. Use an image (JPG, PNG), a PDF or Office document, a video (MP4) or an audio file." };
+		if (!(size > 0)) return { ok: false, kind, message: "The file is empty." };
+		if (size > UPLOAD_LIMITS[kind]) return { ok: false, kind, message: `This ${kind} is ${humanSize(size)}; WhatsApp accepts at most ${humanSize(UPLOAD_LIMITS[kind])}.` };
+		return { ok: true, kind, message: "" };
+	}
+
+	/** How a file message is drawn: its kind, whether it is ready, still being fetched, failed or absent, and the addresses. */
+	function mediaView(m) {
+		if (!m || !MEDIA_KINDS.includes(m.message_type)) return null;
+		const status = m.media_status || (m.direction === "Out" ? "Downloaded" : "");
+		const state = status === "Downloaded" ? "ready" : status === "Failed" ? "failed" : status === "Pending" || status === "Queued" ? "pending" : "none";
+		const base = `/api/method/waba.api.media.file?message=${encodeURIComponent(m.name || "")}`;
+		const rest = String(m.body || "").replace(new RegExp("^\\[" + m.message_type + "\\]\\s*"), "");
+		return { kind: m.message_type, state, url: base, downloadUrl: base + "&download=1", name: m.media_filename || "", size: m.media_size ? humanSize(m.media_size) : "", mime: m.media_mime || "", voice: !!m.voice, error: m.media_error || "", caption: rest };
+	}
+
+	/** A location pin, or null. */
+	function placeFor(m) {
+		if (!m || m.latitude == null || m.longitude == null || (m.latitude === 0 && m.longitude === 0)) return null;
+		const lat = Number(m.latitude), lon = Number(m.longitude);
+		if (!isFinite(lat) || !isFinite(lon)) return null;
+		return { lat, lon, url: `https://www.google.com/maps?q=${lat},${lon}` };
+	}
+
+	/** Contact cards shared by a customer: [{name, phones: []}], never throwing on bad data. */
+	function contactsFor(m) {
+		try {
+			const list = JSON.parse((m && m.contacts_json) || "[]");
+			return Array.isArray(list) ? list.filter((c) => c && typeof c === "object").map((c) => ({ name: String(c.name || ""), phones: Array.isArray(c.phones) ? c.phones.map(String) : [] })) : [];
+		} catch (e) {
+			return [];
+		}
+	}
+
+	/** Reaction chips on a message: one per side. */
+	function reactionsFor(m) {
+		const out = [];
+		if (m && m.customer_reaction) out.push({ who: "Customer", emoji: m.customer_reaction });
+		if (m && m.our_reaction) out.push({ who: "You", emoji: m.our_reaction });
+		return out;
+	}
+
+	/** May a failed message be sent again from the inbox? (The server decides the rest.) */
+	function canRetry(m) {
+		return !!m && m.direction === "Out" && m.status === "Failed" && !m.retried && (m.message_type === "text" || MEDIA_KINDS.includes(m.message_type));
+	}
+
+	/** The message that starts the "N new messages" divider: the unread-th customer message counting back from the end. */
+	function firstUnread(messages, unread) {
+		let left = Number(unread) || 0;
+		if (left <= 0) return null;
+		for (let i = (messages || []).length - 1; i >= 0; i--) {
+			if (messages[i].direction === "In" && --left === 0) return messages[i].name;
+		}
+		return null;
+	}
+
+	/** WhatsApp's *bold*, _italic_, ~strike~ and ```mono``` on already-escaped (and linkified) HTML. Markers must touch the
+	 * word on both sides and sit at a word boundary, so "5 * 6 * 7" and snake_case_names are left alone; link text and
+	 * addresses are never touched. */
+	function waFormat(html) {
+		const parts = String(html || "").split(/(<[^>]+>)/);
+		let inLink = 0;
+		const rules = [
+			[/(^|[\s(>])```([^`]+?)```(?=$|[\s).,!?:;<])/g, "$1<code>$2</code>"],
+			[/(^|[\s(>])\*(?!\s)([^*\n]+?)(?<!\s)\*(?=$|[\s).,!?:;<])/g, "$1<b>$2</b>"],
+			[/(^|[\s(>])_(?!\s)([^_\n]+?)(?<!\s)_(?=$|[\s).,!?:;<])/g, "$1<i>$2</i>"],
+			[/(^|[\s(>])~(?!\s)([^~\n]+?)(?<!\s)~(?=$|[\s).,!?:;<])/g, "$1<s>$2</s>"],
+		];
+		return parts
+			.map((part) => {
+				if (part.startsWith("<")) {
+					if (/^<a[\s>]/i.test(part)) inLink++;
+					else if (/^<\/a>/i.test(part)) inLink = Math.max(0, inLink - 1);
+					return part;
+				}
+				if (inLink) return part;
+				return rules.reduce((text, [re, to]) => text.replace(re, to), part);
+			})
+			.join("");
+	}
+
+	return { MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
 });

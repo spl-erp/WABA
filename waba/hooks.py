@@ -284,6 +284,7 @@ scheduler_events = {
 			"waba.api.webhook.retry_waiting",
 			"waba.assignment.assign_waiting",
 			"waba.assignment.alert_unanswered",
+			"waba.media.retry_pending",
 		],
 	},
 }

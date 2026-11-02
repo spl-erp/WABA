@@ -11,6 +11,9 @@ import requests
 from waba.constants import DEFAULT_API_VERSION, GRAPH_HOST
 
 TIMEOUT = 20
+UPLOAD_TIMEOUT = 120
+DOWNLOAD_TIMEOUT = 120
+MEDIA_HOST_SUFFIXES = (".facebook.com", ".fbcdn.net", ".fbsbx.com", ".whatsapp.net", ".whatsapp.com")  # UNVERIFIED list: where Meta serves media
 PAGE_LIMIT = 100
 MAX_PAGES = 10
 
@@ -27,8 +30,9 @@ class GraphError(Exception):
 		self.http_status = http_status
 
 
-def call(token, method, path, version=None, params=None, data=None, json=None, http=None):
+def call(token, method, path, version=None, params=None, data=None, json=None, http=None, files=None):
 	url = f"{GRAPH_HOST}/{version or DEFAULT_API_VERSION}/{path.lstrip('/')}"
+	extra = {"files": files} if files else {}  # only passed for an upload, so simple fakes need not accept it
 	try:
 		response = (http or requests.request)(
 			method,
@@ -37,7 +41,8 @@ def call(token, method, path, version=None, params=None, data=None, json=None, h
 			data=data,
 			json=json,
 			headers={"Authorization": f"Bearer {token}"},
-			timeout=TIMEOUT,
+			timeout=UPLOAD_TIMEOUT if files else TIMEOUT,
+			**extra,
 		)
 	except requests.RequestException as e:
 		raise GraphError(f"Could not reach Meta ({e.__class__.__name__}).") from None
@@ -140,6 +145,58 @@ def list_templates(token, waba_id, version=None, http=None):
 			break
 		params = {**params, "after": after}
 	return items
+
+
+def media_info(token, media_id, version=None, http=None):
+	"""Where to fetch a customer's file: {"url", "mime_type", "sha256", "file_size", "id"} (field names UNVERIFIED live)."""
+	return call(token, "GET", str(media_id), version, http=http)
+
+
+def media_host_allowed(url):
+	"""The access token is only ever sent to https hosts that belong to Meta."""
+	from urllib.parse import urlparse
+
+	parts = urlparse(str(url or ""))
+	host = (parts.hostname or "").lower()
+	return parts.scheme == "https" and any(host.endswith(suffix) for suffix in MEDIA_HOST_SUFFIXES)
+
+
+def download_media(token, url, max_bytes, http=None):
+	"""The bytes of a customer's file. Refuses a foreign host (so the token cannot leak) and anything over max_bytes."""
+	if not media_host_allowed(url):
+		raise GraphError("Meta gave a file address that is not on a Meta host, so it was not fetched.")
+	try:
+		response = (http or requests.request)(
+			"GET", url, headers={"Authorization": f"Bearer {token}"}, timeout=DOWNLOAD_TIMEOUT, stream=True
+		)
+	except requests.RequestException as e:
+		raise GraphError(f"Could not reach Meta ({e.__class__.__name__}).") from None
+	if response.status_code >= 400:
+		raise GraphError(f"Meta answered HTTP {response.status_code} for the file.", http_status=response.status_code)
+	declared = response.headers.get("Content-Length") if getattr(response, "headers", None) else None
+	if declared and str(declared).isdigit() and int(declared) > max_bytes:
+		raise GraphError("The file is larger than the limit and was not downloaded.")
+	content = response.content
+	if len(content) > max_bytes:
+		raise GraphError("The file is larger than the limit and was not downloaded.")
+	return content
+
+
+def upload_media(token, phone_number_id, filename, content, mime, version=None, http=None):
+	"""Upload bytes to Meta and return the media id it will accept in a send."""
+	body = call(
+		token,
+		"POST",
+		f"{phone_number_id}/media",
+		version,
+		data={"messaging_product": "whatsapp", "type": mime},
+		files={"file": (filename, content, mime)},
+		http=http,
+	)
+	media_id = body.get("id") if isinstance(body, dict) else None
+	if not media_id:
+		raise GraphError("Meta did not return a file id for the upload.")
+	return str(media_id)
 
 
 def send_message(token, phone_number_id, payload, version=None, http=None):
