@@ -56,6 +56,13 @@ callback URL: make sure the other WhatsApp apps installed on UAT (frappe_whatsap
   on their Lead, Contact or Customer, so for the first test, write to the number from your phone first (that opens the window).
 - Only **Utility** templates with a text body (and optional text header), no buttons, appear in the ERP picker.
 
+## 5c. A live customer number on a test system: Receive only
+If a number that real customers write to (for example one a messaging provider runs for production) is connected to the
+test ERP, tick **Receive only (safety)** on its Waba Number. The ERP then listens to it but nothing can be sent from it:
+no reply, template, file, reaction or read receipt, and starting a chat from a Lead is refused before anything is
+created. A Waba Admin unticks it when the number is meant for real sending. Messages from real customers will still
+appear in the inbox, so only people who may see them should have access.
+
 ## 6. Try it
 Send a WhatsApp message from your verified mobile to the test number. Open **Webhook Events** in the Waba workspace: a
 new row should appear within seconds. If it does not, open the Error Log and the row's status, and tell me what you see.

@@ -483,3 +483,28 @@
 	.waba-jump { bottom: 120px; right: 12px; }
 	.waba-media-img, .waba-media-video { max-width: 100%; }
 }
+
+/* ---- short windows (a laptop with panels open, a browser with toolbars): one compact header row, icon-only buttons, so the messages keep the space */
+@media (max-height: 640px) {
+	.waba-th-head { flex-wrap: nowrap; align-items: center; padding: 6px 12px; gap: 8px; row-gap: 0; }
+	.waba-th-head .waba-avatar.lg { width: 36px; height: 36px; font-size: 13px; }
+	.waba-th-id { flex: 1 1 0; min-width: 0; padding-top: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; row-gap: 0; }
+	.waba-th-id > * { margin: 0 !important; }
+	.waba-th-name { font-size: 15px; flex: 0 1 auto; }
+	.waba-th-phone { font-size: 12px; }
+	.waba-th-id .waba-chip { padding: 0 8px; font-size: 11px; }
+	.waba-th-assign { font-size: 11.5px; }
+	.waba-th-actions { width: auto; margin-left: auto; flex-wrap: nowrap; gap: 4px; justify-content: flex-end; }
+	.waba-th-actions .waba-btn-text { display: none; }
+	.waba-th-actions .waba-btn { padding: 0 10px; height: 34px; }
+	.waba-banner { margin: 6px 12px 0; padding: 5px 12px; }
+	.waba-composer { padding: 8px 10px; gap: 8px; }
+	.waba-compose-tabs { margin-bottom: 0; }
+	.waba-circle { width: 38px; height: 38px; }
+}
+
+/* cards inside a bubble are not text links: keep the card look (the plain-link style above targets typed links) */
+.waba-text a.waba-doc, .waba-text a.waba-place, .waba-text a.waba-media-open { color: var(--w-ink); text-decoration: none; word-break: normal; }
+.waba-text a.waba-doc i, .waba-text a.waba-place i { color: var(--w-ink-3); }
+.waba-text a.waba-doc b, .waba-text a.waba-place b { color: var(--w-ink); }
+.waba-media-audio audio { width: 230px; min-width: 160px; max-width: 100%; }

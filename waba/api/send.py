@@ -42,11 +42,16 @@ class _Context:
 		self.account = frappe.get_doc("Waba Account", self.number.account)
 		if not (self.number.enabled and self.account.enabled):
 			frappe.throw(_("The number or its WhatsApp account is switched off."))
+		self.receive_only = bool(self.number.get("receive_only"))
 		self.refuse_unless(purposes.check({p: self.number.get(f"purpose_{p}") for p in purposes.PURPOSES}, purpose))
 		self.token = get_decrypted_password("Waba Portfolio", self.account.portfolio, "access_token", raise_exception=False)
 		if need_token and not self.token:
 			frappe.throw(_("Save the access token on the portfolio {0} first.").format(self.account.portfolio))
 		self.version = self.account.api_version or DEFAULT_API_VERSION
+
+	def refuse_if_receive_only(self):
+		"""Called before anything that writes to the customer (and again in _deliver as a backstop)."""
+		self.refuse_unless(purposes.check_send_allowed(self.receive_only))
 
 	def refuse_unless(self, check):
 		ok, _code, message = check
@@ -76,6 +81,7 @@ def send_text(conversation: str, body: str, reply_to: str | None = None):
 
 def _send_text(conversation, body, reply_to, origin):
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.refuse_if_receive_only()
 	ctx.refuse_unless(outbound.check_free_text(body, ctx.conversation.last_inbound_at, now_datetime()))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
 	payload = outbound.text_payload(ctx.conversation.customer_phone, body, reply_to)
@@ -91,6 +97,7 @@ def send_template(conversation: str, template: str, params: str | list | None = 
 def _send_template(conversation, template, params, origin):
 	"""The one template sender. Notifications, reminders and campaigns call this with their own origin (server side only)."""
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.refuse_if_receive_only()
 	tpl = frappe.get_doc("Waba Template", template)
 	if tpl.account != ctx.account.name:
 		frappe.throw(_("That template belongs to a different WhatsApp account."))
@@ -141,7 +148,7 @@ def mark_read(conversation: str):
 		"message_id",
 		order_by="sent_at desc",
 	)
-	if latest and ctx.token:
+	if latest and ctx.token and not ctx.receive_only:  # a read receipt also writes to the customer's phone
 		try:
 			graph.send_message(ctx.token, ctx.number.phone_number_id, outbound.read_receipt_payload(latest), ctx.version)
 		except graph.GraphError:
@@ -154,6 +161,8 @@ def _deliver(ctx, payload, values, origin=purposes.PERSON, on_created=None):
 	"""Record the message, then send it. `payload` may be a function that builds the payload (a file upload belongs
 	there: it must happen after the record exists and its failure must leave a Failed row, never a Queued one).
 	`on_created(message)` runs once the record exists (a file copy is attached to it there)."""
+	if getattr(ctx, "receive_only", False):  # backstop: every sender above already checked, but nothing may slip through
+		return {"ok": False, "error": _(purposes.check_send_allowed(True)[2])}
 	now = now_datetime()
 	shown = values.get("preview") or make_preview(values.get("body"))
 	message = frappe.get_doc(
@@ -237,6 +246,7 @@ def _mime_of(filename):
 def _send_media(conversation, content, filename, mime, caption, reply_to, origin):
 	"""The one file sender (device file, ERP document, library file). All checks happen before anything is created."""
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.refuse_if_receive_only()
 	ctx.refuse_unless(outbound.check_media_send(ctx.conversation.last_inbound_at, now_datetime()))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
 	mime = media_rules.clean_mime(mime)
@@ -375,6 +385,7 @@ def send_reaction(message: str, emoji: str = ""):
 	"""React to a customer's message with an emoji (an empty emoji removes our reaction). Needs the window to be open."""
 	msg = frappe.get_doc("Waba Message", message)
 	ctx = _Context(msg.conversation)
+	ctx.refuse_if_receive_only()
 	if msg.direction != "In" or not msg.message_id:
 		frappe.throw(_("You can react only to a customer's message."))
 	emoji = (emoji or "").strip()

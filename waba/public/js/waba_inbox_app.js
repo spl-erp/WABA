@@ -675,7 +675,7 @@ class WabaThread {
 				const sep = day && day !== lastDay ? `<div class="waba-day"><span>${waba_e(day)}</span></div>` : "";
 				lastDay = day || lastDay;
 				if (item.type === "message") {
-					const divider = item.data.name === this.divider_at ? `<div class="waba-unread-div"><span>${__("{0} new message(s)", [this.divider_n])}</span></div>` : "";
+					const divider = item.data.name === this.divider_at ? `<div class="waba-unread-div"><span>${this.divider_n === 1 ? __("1 new message") : __("{0} new messages", [this.divider_n])}</span></div>` : "";
 					return sep + divider + this.message_html(item.data);
 				}
 				return sep + (item.type === "event" ? this.event_html(item.data) : this.note_html(item.data));

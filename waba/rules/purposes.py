@@ -78,3 +78,19 @@ def replies_go_to_pool(flags, policy):
 	Only a number that is NOT switched on for conversations can have such a policy (a notification-only number, whose
 	replies should not land in a rep's chat by chance)."""
 	return (not (flags or {}).get(CONVERSATIONS)) and policy == REPLY_POOL
+
+
+RECEIVE_ONLY = "receive_only"
+
+
+def check_send_allowed(receive_only):
+	"""(ok, code, message). A number marked receive-only is listened to but never written to: no message, template, file,
+	reaction or read receipt leaves it. A safety lock for a live customer number connected to a test system."""
+	if receive_only:
+		return (
+			False,
+			RECEIVE_ONLY,
+			"This number is set to receive only (a safety setting), so nothing can be sent from it. "
+			"A Waba Admin can switch that off on the Number.",
+		)
+	return True, None, None

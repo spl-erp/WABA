@@ -13,7 +13,7 @@ from waba import assignment, parties, permissions, teams
 from waba.api import send
 from waba.api.send import SENDERS
 from waba.rules import consent as rules
-from waba.rules import inbound, outbound, window
+from waba.rules import inbound, outbound, purposes, window
 
 CONSENT_SOURCES = ["IndiaMART enquiry", "Website form", "Verbal / phone call", "QR code scan", "Email", "WhatsApp message", "Other"]
 
@@ -116,6 +116,8 @@ def start(doctype: str, name: str, number: str, phone: str, template: str, param
 	numbers = {n.name: n for n in _my_numbers()}
 	if number not in numbers:
 		frappe.throw(_("You may not send from that number."), frappe.PermissionError)
+	if frappe.db.get_value("Waba Number", number, "receive_only"):
+		frappe.throw(_(purposes.check_send_allowed(True)[2]))
 	account = frappe.get_doc("Waba Account", numbers[number].account)
 	if not get_decrypted_password("Waba Portfolio", account.portfolio, "access_token", raise_exception=False):
 		frappe.throw(_("Save the access token on the portfolio {0} first.").format(account.portfolio))

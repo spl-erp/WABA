@@ -8,6 +8,7 @@
   "display_number",
   "display_name",
   "enabled",
+  "receive_only",
   "column_break_nu1",
   "phone_number_id",
   "name_status",
@@ -71,6 +72,14 @@
    "fieldtype": "Check",
    "label": "Enabled",
    "default": "1"
+  },
+  {
+   "fieldname": "receive_only",
+   "fieldtype": "Check",
+   "label": "Receive only (safety)",
+   "default": "0",
+   "in_list_view": 0,
+   "description": "Tick on a live number that the ERP only listens to. Nothing can be sent from it, not even read receipts, so a test cannot reach real customers."
   },
   {
    "fieldname": "column_break_nu1",
@@ -277,7 +286,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-30 18:00:00.000000",
+ "modified": "2026-11-02 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Number",
