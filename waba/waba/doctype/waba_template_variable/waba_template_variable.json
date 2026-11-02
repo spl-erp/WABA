@@ -1,0 +1,35 @@
+{
+ "actions": [],
+ "creation": "2026-11-02 18:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "slot",
+  "label",
+  "source_type",
+  "source",
+  "example",
+  "active"
+ ],
+ "fields": [
+  {"fieldname": "slot", "fieldtype": "Data", "label": "Slot", "reqd": 1, "read_only": 1, "in_list_view": 1, "description": "Where in the template this value goes, for example body.1, body.customer_name, header.media, button.0."},
+  {"fieldname": "label", "fieldtype": "Data", "label": "Shown to the rep as", "in_list_view": 1},
+  {"fieldname": "source_type", "fieldtype": "Select", "label": "Filled from", "options": "Ask each time\nRecord field\nLiteral\nSender name\nToday\nCustomer name\nShared file", "default": "Ask each time", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "source", "fieldtype": "Data", "label": "Field, text or file", "in_list_view": 1, "description": "Record field: the field name on the Lead, Contact or Customer (for example customer_name or mobile_no). Literal: the text itself. Shared file: the Shared File name (media headers)."},
+  {"fieldname": "example", "fieldtype": "Data", "label": "Example", "description": "What a typical value looks like; shown as a hint."},
+  {"fieldname": "active", "fieldtype": "Check", "label": "Used by the template", "default": "1", "read_only": 1, "description": "Unticked when a later sync finds the template no longer has this slot."}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-02 18:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Template Variable",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1,
+ "editable_grid": 1,
+ "permissions": []
+}

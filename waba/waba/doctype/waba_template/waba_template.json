@@ -115,6 +115,27 @@
    "read_only": 1
   },
   {
+   "fieldname": "parameter_format",
+   "fieldtype": "Select",
+   "label": "Variable style",
+   "options": "\nPOSITIONAL\nNAMED",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quality",
+   "fieldtype": "Data",
+   "label": "Quality",
+   "read_only": 1,
+   "description": "Meta's quality rating (GREEN, YELLOW, RED) when it reports one."
+  },
+  {
+   "fieldname": "unsendable_reason",
+   "fieldtype": "Small Text",
+   "label": "Why it cannot be sent from the ERP",
+   "read_only": 1,
+   "description": "Filled when the template has a part the ERP cannot send yet (carousel, flow button, location header...)."
+  },
+  {
    "fieldname": "rejected_reason",
    "fieldtype": "Small Text",
    "label": "Rejected Because",
@@ -137,11 +158,36 @@
    "fieldtype": "Datetime",
    "label": "Last Synced",
    "read_only": 1
+  },
+  {
+   "fieldname": "variables_section",
+   "fieldtype": "Section Break",
+   "label": "Values the template needs"
+  },
+  {
+   "fieldname": "variables",
+   "fieldtype": "Table",
+   "label": "Where each value comes from",
+   "options": "Waba Template Variable",
+   "description": "Fill these once and reps get the values filled in automatically. Added by Sync templates; never overwritten by it."
+  },
+  {
+   "fieldname": "components_section",
+   "fieldtype": "Section Break",
+   "label": "As Meta stores it",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "components_json",
+   "fieldtype": "Code",
+   "label": "Components (JSON)",
+   "options": "JSON",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-28 19:00:00.000000",
+ "modified": "2026-11-02 18:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Template",
@@ -158,13 +204,15 @@
    "read": 1,
    "report": 1,
    "export": 1,
-   "delete": 1
+   "delete": 1,
+   "write": 1
   },
   {
    "role": "Waba Admin",
    "read": 1,
    "report": 1,
-   "export": 1
+   "export": 1,
+   "write": 1
   },
   {
    "role": "Waba Supervisor",
@@ -189,9 +237,16 @@
   "column_break_tp2",
   "variable_count",
   "button_count",
+  "parameter_format",
+  "quality",
+  "unsendable_reason",
   "rejected_reason",
   "meta_section",
   "meta_template_id",
-  "last_synced"
+  "last_synced",
+  "variables_section",
+  "variables",
+  "components_section",
+  "components_json"
  ]
 }

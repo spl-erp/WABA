@@ -25,9 +25,9 @@ function waba_inbox_assets() {
 			const v = encodeURIComponent((r && r.message) || "0");
 			const base = "/assets/waba";
 			$("<link>", { rel: "stylesheet", href: `${base}/css/waba_inbox.css?v=${v}` }).appendTo("head");
-			return $.ajax({ url: `${base}/js/waba_inbox_lib.js?v=${v}`, dataType: "script", cache: true }).then(() =>
-				$.ajax({ url: `${base}/js/waba_inbox_app.js?v=${v}`, dataType: "script", cache: true })
-			);
+			return $.ajax({ url: `${base}/js/waba_inbox_lib.js?v=${v}`, dataType: "script", cache: true })
+				.then(() => $.ajax({ url: `${base}/js/waba_template_dialog.js?v=${v}`, dataType: "script", cache: true }))
+				.then(() => $.ajax({ url: `${base}/js/waba_inbox_app.js?v=${v}`, dataType: "script", cache: true }));
 		});
 	}
 	return window.__waba_inbox_assets;

@@ -913,6 +913,16 @@ class WabaThread {
 
 // ---------------------------------------------------------------------------------------------- the page
 
+/** The shared template dialog lives in its own file. Load it the first time it is wanted (the page's own loader is stored in the
+ * database and only refreshes on a migrate, so the inbox does not depend on it). */
+function load_template_dialog() {
+	if (window.WabaTemplateDialog) return Promise.resolve();
+	return frappe.call({ method: "waba.api.inbox.assets_version", silent: true }).then((r) => {
+		const v = encodeURIComponent((r && r.message) || "0");
+		return $.ajax({ url: `/assets/waba/js/waba_template_dialog.js?v=${v}`, dataType: "script", cache: true });
+	});
+}
+
 class WabaInbox {
 	constructor(page, wrapper) {
 		this.page = page;
@@ -1413,40 +1423,14 @@ class WabaInbox {
 				frappe.msgprint(__("No approved template found. Press Meta, Sync templates on the WhatsApp Account first."));
 				return;
 			}
-			const byTitle = Object.fromEntries(templates.map((t) => [t.title, t]));
-			const dialog = new frappe.ui.Dialog({
-				title: __("Send a template to {0}", [c.customer_label]),
-				fields: [
-					{
-						fieldname: "template",
-						label: __("Template"),
-						fieldtype: "Select",
-						options: templates.map((t) => t.title).join("\n"),
-						reqd: 1,
-						change: () => {
-							const t = byTitle[dialog.get_value("template")];
-							dialog.get_field("preview").$wrapper.html(
-								t
-									? `<div class="text-muted small">${waba_e(t.category)} - ${t.variable_count} ${__("value(s)")}</div><pre style="white-space:pre-wrap">${waba_e(t.body_text)}</pre>`
-									: ""
-							);
-						},
-					},
-					{ fieldname: "preview", fieldtype: "HTML" },
-					{
-						fieldname: "values",
-						label: __("Values"),
-						fieldtype: "Small Text",
-						description: __("One value per line, in order: the first line fills {{1}}, the second {{2}}, and so on."),
-					},
-				],
-				primary_action_label: __("Send"),
-				primary_action: (values) => {
-					dialog.hide();
-					this.send("send_template", { template: byTitle[values.template].name, params: values.values || "" });
-				},
-			});
-			dialog.show();
+			load_template_dialog().then(() =>
+				window.WabaTemplateDialog.open({
+					title: __("Send a template to {0}", [c.customer_label]),
+					templates,
+					load: (template) => frappe.call({ method: "waba.api.send.template_form", args: { conversation: c.name, template } }).then((res) => res.message),
+					send: (template, values) => this.send("send_template", { template, params: values }),
+				})
+			);
 		});
 	}
 }

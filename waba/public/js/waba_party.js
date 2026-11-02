@@ -130,6 +130,17 @@
 
 	// ------------------------------------------------------------------------------------------- message dialog
 
+	/** The shared template form lives in its own file; load it (and the helpers it needs) the first time it is wanted. */
+	function load_template_dialog() {
+		if (window.WabaTemplateForm) return Promise.resolve();
+		return frappe.call({ method: "waba.api.inbox.assets_version", silent: true }).then((r) => {
+			const v = encodeURIComponent((r && r.message) || "0");
+			const base = "/assets/waba/js";
+			const lib = window.WabaLib ? Promise.resolve() : $.ajax({ url: `${base}/waba_inbox_lib.js?v=${v}`, dataType: "script", cache: true });
+			return Promise.resolve(lib).then(() => $.ajax({ url: `${base}/waba_template_dialog.js?v=${v}`, dataType: "script", cache: true }));
+		});
+	}
+
 	function message_dialog(frm, ctx) {
 		const numbers = ctx.numbers || [];
 		const phones = (ctx.phones || []).filter((p) => p.key);
@@ -152,7 +163,8 @@
 			if (!dialog) return;
 			const why = reason();
 			dialog.get_field("problem").$wrapper.html(why ? `<div class="alert alert-warning" style="margin:0">${esc(why)}</div>` : "");
-			dialog.get_primary_btn().prop("disabled", !!why);
+			const form_ok = dialog.tplctl ? dialog.tplctl.form.sendable : false;  // disabled while the template is loading or cannot be sent
+			dialog.get_primary_btn().prop("disabled", !!why || !form_ok);
 		};
 		const fill_templates = () => {
 			if (!dialog) return;
@@ -167,8 +179,23 @@
 		const show_template = () => {
 			if (!dialog) return;
 			const t = (dialog.templates || {})[dialog.get_value("template")];
-			dialog.get_field("preview").$wrapper.html(t ? `<div class="text-muted small">${t.variable_count} ${__("value(s)")} &middot; ${esc(t.language)}</div><pre style="white-space:pre-wrap;margin:4px 0 0">${esc(t.body_text)}</pre>` : "");
+			const n = numberByLabel[dialog.get_value("number")];
+			const $box = dialog.get_field("tplform").$wrapper;
+			dialog.tplctl = null;
+			if (!t || !n) {
+				$box.html("");
+				refresh_state();
+				return;
+			}
+			$box.html(`<div class="text-muted small">${__("Loading...")}</div>`);
 			refresh_state();
+			load_template_dialog()
+				.then(() => frappe.call({ method: "waba.api.party.template_form", args: { doctype: frm.doctype, name: frm.doc.name, number: n.name, template: t.name } }))
+				.then((r) => {
+					if (dialog.get_value("template") !== t.title) return; // another template was picked meanwhile
+					dialog.tplctl = new window.WabaTemplateForm($box, r.message);
+					refresh_state();
+				});
 		};
 
 		dialog = new frappe.ui.Dialog({
@@ -179,21 +206,29 @@
 				{ fieldname: "number", label: __("Send from"), fieldtype: "Select", options: numbers.map((n) => n.label).join("\n"), default: numbers.length ? numbers[0].label : "", reqd: 1, change: fill_templates },
 				{ fieldname: "phone", label: __("To"), fieldtype: "Select", options: Object.keys(phoneByLabel).join("\n"), default: Object.keys(phoneByLabel)[0] || "", reqd: 1 },
 				{ fieldname: "template", label: __("Template (Utility)"), fieldtype: "Select", reqd: 1, change: show_template },
-				{ fieldtype: "HTML", fieldname: "preview" },
-				{ fieldname: "values", label: __("Values"), fieldtype: "Small Text", description: __("One value per line, in order: the first line fills {{1}}, the second {{2}}, and so on.") },
+				{ fieldtype: "HTML", fieldname: "tplform" },
 			],
 			primary_action_label: __("Send"),
 			primary_action: (values) => {
 				const tpl = dialog.templates[values.template];
-				if (!tpl) return;
+				const ctl = dialog.tplctl;
+				if (!tpl || !ctl) return;
+				const typed = ctl.collect();
+				if (!typed.ok) {
+					frappe.show_alert({ message: __("Fill in every value first."), indicator: "orange" }, 4);
+					return;
+				}
 				dialog.get_primary_btn().prop("disabled", true);
-				frappe
-					.call({
-						method: "waba.api.party.start",
-						args: { doctype: frm.doctype, name: frm.doc.name, number: numberByLabel[values.number].name, phone: phoneByLabel[values.phone].raw, template: tpl.name, params: values.values || "" },
-						freeze: true,
-						freeze_message: __("Sending..."),
-					})
+				ctl
+					.upload(typed.values)
+					.then((vals) =>
+						frappe.call({
+							method: "waba.api.party.start",
+							args: { doctype: frm.doctype, name: frm.doc.name, number: numberByLabel[values.number].name, phone: phoneByLabel[values.phone].raw, template: tpl.name, params: vals },
+							freeze: true,
+							freeze_message: __("Sending..."),
+						})
+					)
 					.then((r) => {
 						const out = r.message || {};
 						dialog.hide();

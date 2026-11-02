@@ -273,3 +273,21 @@ class TestInboxMedia(unittest.TestCase):
 		self.assertEqual(self.lib(f"m.firstUnread({msgs}, 3)"), "a")
 		self.assertIsNone(self.lib(f"m.firstUnread({msgs}, 0)"))
 		self.assertIsNone(self.lib(f"m.firstUnread({msgs}, 9)"))
+
+
+@unittest.skipUnless(NODE, "node is not installed")
+class TestTemplateDialogHelpers(unittest.TestCase):
+	def lib(self, expression):
+		return js("waba_inbox_lib.js", expression)
+
+	def test_fill_template_puts_values_in_and_keeps_missing_ones_visible(self):
+		self.assertEqual(self.lib('m.fillTemplate("Hi {{customer_name}}, order {{2}} for {{1}}", "body", {"body.customer_name": " Rahul ", "body.1": "x"})'), "Hi Rahul, order {{2}} for x")
+		self.assertEqual(self.lib('m.fillTemplate("Order {{1}}", "header", {"body.1": "wrong component"})'), "Order {{1}}")
+		self.assertEqual(self.lib('m.fillTemplate(null, "body", {})'), "")
+		self.assertEqual(self.lib('m.fillTemplate("{{ 1 }}", "body", {"body.1": "  "})'), "{{ 1 }}")
+
+	def test_missing_slots(self):
+		slots = '[{id: "body.1"}, {id: "header.media"}, {id: "button.0"}]'
+		self.assertEqual(self.lib(f'm.missingSlots({slots}, {{"body.1": "a", "header.media": {{shared_file: "W1"}}, "button.0": " "}})'), ["button.0"])
+		self.assertEqual(self.lib(f'm.missingSlots({slots}, {{}})'), ["body.1", "header.media", "button.0"])
+		self.assertEqual(self.lib(f'm.missingSlots({slots}, {{"body.1": "a", "header.media": {{file_url: "/private/x"}}, "button.0": "z"}})'), [])

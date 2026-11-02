@@ -2,6 +2,8 @@
 Admin only. Each button calls Meta with the portfolio's token, records what it learned on the account and says
 in plain words what happened."""
 
+import json
+
 import frappe
 from frappe import _
 from frappe.utils import now_datetime
@@ -9,6 +11,7 @@ from frappe.utils.password import get_decrypted_password
 
 from waba.constants import DEFAULT_API_VERSION, NUMBER_TYPE_SHARED, ROLE_ADMIN
 from waba.meta import graph
+from waba.rules import templates
 from waba.rules.phone import e164
 
 
@@ -97,6 +100,30 @@ def sync_numbers(account):
 	)
 
 
+def _sync_variable_rows(key, structure):
+	"""One editable row per value the template needs. New slots get a row; rows already there (and what an admin set in them)
+	are never touched; a slot the template no longer has is only switched off, so the choice survives if it comes back."""
+	doc = frappe.get_doc("Waba Template", key)
+	have = {row.slot: row for row in doc.variables}
+	wanted = {slot["id"]: slot for slot in structure["slots"]}
+	changed = False
+	for slot_id, slot in wanted.items():
+		row = have.get(slot_id)
+		if row is None:
+			doc.append("variables", {"slot": slot_id, "label": slot["label"], "source_type": "Ask each time", "active": 1})
+			changed = True
+		elif not row.active:
+			row.active = 1
+			changed = True
+	for slot_id, row in have.items():
+		if slot_id not in wanted and row.active:
+			row.active = 0
+			changed = True
+	if changed:
+		doc.flags.ignore_permissions = True
+		doc.save()
+
+
 @frappe.whitelist(methods=["POST"])
 def sync_templates(account):
 	from waba.rules.outbound import variable_count
@@ -115,11 +142,12 @@ def sync_templates(account):
 			continue
 		key = f"{doc.name}|{values['template_name']}|{values['language']}"
 		seen.add(key)
+		structure = templates.parse(json.loads(values["components_json"]), values["parameter_format"])
 		values.update(
 			{
 				"title": f"{values['template_name']} ({values['language']})",
 				"account": doc.name,
-				"variable_count": variable_count(values["body_text"]),
+				"variable_count": len(structure["body"]["slots"]) or variable_count(values["body_text"]),
 				"last_synced": now_datetime(),
 			}
 		)
@@ -129,6 +157,7 @@ def sync_templates(account):
 		else:
 			frappe.get_doc({"doctype": "Waba Template", "template_key": key, **values}).insert(ignore_permissions=True)
 			created += 1
+		_sync_variable_rows(key, structure)
 
 	removed = 0
 	for name in frappe.get_all("Waba Template", filters={"account": doc.name, "status": ["!=", "DELETED"]}, pluck="name"):

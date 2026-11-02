@@ -34,6 +34,16 @@ frappe.ui.form.on("Waba Conversation", {
 			}).addClass("btn-primary");
 		}
 
+		const load_dialog = () => {
+			if (window.WabaTemplateForm) return Promise.resolve();
+			return frappe.call({ method: "waba.api.inbox.assets_version", silent: true }).then((r) => {
+				const v = encodeURIComponent((r && r.message) || "0");
+				const base = "/assets/waba/js";
+				const lib = window.WabaLib ? Promise.resolve() : $.ajax({ url: `${base}/waba_inbox_lib.js?v=${v}`, dataType: "script", cache: true });
+				return Promise.resolve(lib).then(() => $.ajax({ url: `${base}/waba_template_dialog.js?v=${v}`, dataType: "script", cache: true }));
+			});
+		};
+
 		frm.add_custom_button(__("Send template"), () => {
 			frappe.call({ method: "waba.api.send.templates_for", args: { conversation: frm.doc.name } }).then((r) => {
 				const templates = r.message || [];
@@ -41,40 +51,23 @@ frappe.ui.form.on("Waba Conversation", {
 					frappe.msgprint(__("No approved template found. Press Meta, Sync templates on the WhatsApp Account first."));
 					return;
 				}
-				const byTitle = Object.fromEntries(templates.map((t) => [t.title, t]));
-				const dialog = new frappe.ui.Dialog({
-					title: __("Send a template"),
-					fields: [
-						{
-							fieldname: "template",
-							label: __("Template"),
-							fieldtype: "Select",
-							options: templates.map((t) => t.title).join("\n"),
-							reqd: 1,
-							change() {
-								const t = byTitle[dialog.get_value("template")];
-								dialog.get_field("preview").$wrapper.html(
-									t
-										? `<div class="text-muted small">${frappe.utils.escape_html(t.category)} - ${t.variable_count} value(s)</div><pre style="white-space:pre-wrap">${frappe.utils.escape_html(t.body_text)}</pre>`
-										: ""
-								);
-							},
-						},
-						{ fieldname: "preview", fieldtype: "HTML" },
-						{
-							fieldname: "values",
-							label: __("Values"),
-							fieldtype: "Small Text",
-							description: __("One value per line, in order: the first line fills {{1}}, the second {{2}}, and so on."),
-						},
-					],
-					primary_action_label: __("Send"),
-					primary_action(values) {
-						dialog.hide();
-						send("send_template", { template: byTitle[values.template].name, params: values.values || "" });
-					},
-				});
-				dialog.show();
+				load_dialog().then(() =>
+					window.WabaTemplateDialog.open({
+						title: __("Send a template"),
+						templates,
+						load: (template) => frappe.call({ method: "waba.api.send.template_form", args: { conversation: frm.doc.name, template } }).then((res) => res.message),
+						send: (template, values) =>
+							frappe
+								.call({ method: "waba.api.send.send_template", args: { conversation: frm.doc.name, template, params: values }, freeze: true, freeze_message: __("Sending...") })
+								.then((res) => {
+									const out = res.message || {};
+									if (out.ok) frappe.show_alert({ message: __("Sent to Meta. Delivery ticks will follow."), indicator: "green" }, 6);
+									else if (out.error) frappe.msgprint({ title: __("Not sent"), message: out.error, indicator: "red" });
+									frm.reload_doc();
+									return !!out.ok;
+								}),
+					})
+				);
 			});
 		});
 

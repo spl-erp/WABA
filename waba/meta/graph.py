@@ -6,9 +6,12 @@ The phone-number field list follows Meta's reference as read on 28 Oct 2026 but 
 live account: if Meta rejects a field (error 100) the call is repeated with the minimal set.
 """
 
+import json
+
 import requests
 
 from waba.constants import DEFAULT_API_VERSION, GRAPH_HOST
+from waba.rules import templates
 
 TIMEOUT = 20
 UPLOAD_TIMEOUT = 120
@@ -123,20 +126,24 @@ def explain(error):
 	return f"{meaning}. ({error.message})"
 
 
+TEMPLATE_FIELDS_FULL = "id,name,language,category,status,components,rejected_reason,parameter_format,quality_score"
 TEMPLATE_FIELDS = "id,name,language,category,status,components,rejected_reason"
 TEMPLATE_FIELDS_MINIMAL = "id,name,language,category,status,components"
+_TEMPLATE_FIELD_SETS = (TEMPLATE_FIELDS_FULL, TEMPLATE_FIELDS, TEMPLATE_FIELDS_MINIMAL)  # asked in this order; error 100 moves to the next
 
 
 def list_templates(token, waba_id, version=None, http=None):
-	"""All message templates of the account (follows paging). Unverified field: rejected_reason."""
-	params = {"fields": TEMPLATE_FIELDS, "limit": PAGE_LIMIT}
+	"""All message templates of the account (follows paging). Unverified fields: rejected_reason, parameter_format, quality_score;
+	if Meta refuses a field (error 100) the list is asked again with fewer fields."""
+	params = {"fields": TEMPLATE_FIELDS_FULL, "limit": PAGE_LIMIT}
 	items = []
 	for _page in range(MAX_PAGES):
 		try:
 			body = call(token, "GET", f"{waba_id}/message_templates", version, params=params, http=http)
 		except GraphError as e:
-			if e.code == 100 and params["fields"] != TEMPLATE_FIELDS_MINIMAL and not items:
-				params = {**params, "fields": TEMPLATE_FIELDS_MINIMAL}
+			position = _TEMPLATE_FIELD_SETS.index(params["fields"]) if params["fields"] in _TEMPLATE_FIELD_SETS else len(_TEMPLATE_FIELD_SETS)
+			if e.code == 100 and position + 1 < len(_TEMPLATE_FIELD_SETS) and not items:
+				params = {**params, "fields": _TEMPLATE_FIELD_SETS[position + 1]}
 				continue
 			raise
 		items += body.get("data") or []
@@ -209,7 +216,14 @@ def template_values(item):
 	parts = {c.get("type"): c for c in item.get("components") or [] if isinstance(c, dict)}
 	header = parts.get("HEADER") or {}
 	buttons = (parts.get("BUTTONS") or {}).get("buttons") or []
+	quality = item.get("quality_score") if isinstance(item.get("quality_score"), dict) else {}
+	structure = templates.parse(item.get("components"), item.get("parameter_format"))
+	ok, why = templates.sendable(structure)
 	return {
+		"parameter_format": structure["parameter_format"],
+		"quality": str(quality.get("score") or "").upper() or None,
+		"unsendable_reason": None if ok else why,
+		"components_json": json.dumps(item.get("components") or [], ensure_ascii=False),
 		"meta_template_id": str(item.get("id") or ""),
 		"template_name": item.get("name"),
 		"language": item.get("language"),

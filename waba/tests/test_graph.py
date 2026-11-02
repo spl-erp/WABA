@@ -109,7 +109,30 @@ class TestTemplatesAndSend(unittest.TestCase):
 	def test_list_templates_pages_and_falls_back(self):
 		http = Fake(error(100, "bad field"), Resp({"data": [self.ITEM]}))
 		self.assertEqual(len(graph.list_templates("t", "123", http=http)), 1)
-		self.assertEqual(http.calls[1]["params"]["fields"], graph.TEMPLATE_FIELDS_MINIMAL)
+		self.assertEqual(http.calls[0]["params"]["fields"], graph.TEMPLATE_FIELDS_FULL)
+		self.assertEqual(http.calls[1]["params"]["fields"], graph.TEMPLATE_FIELDS)  # keeps rejected_reason when only the newer fields are refused
+
+	def test_list_templates_steps_down_to_the_minimal_set_and_then_gives_up(self):
+		http = Fake(error(100, "bad"), error(100, "bad"), Resp({"data": [self.ITEM]}))
+		graph.list_templates("t", "123", http=http)
+		self.assertEqual(http.calls[2]["params"]["fields"], graph.TEMPLATE_FIELDS_MINIMAL)
+		with self.assertRaises(graph.GraphError):
+			graph.list_templates("t", "123", http=Fake(error(100, "a"), error(100, "b"), error(100, "c")))
+
+	def test_template_values_keep_the_whole_template_and_its_shape(self):
+		item = dict(self.ITEM, parameter_format="POSITIONAL", quality_score={"score": "green"})
+		v = graph.template_values(item)
+		self.assertEqual(v["parameter_format"], "POSITIONAL")
+		self.assertEqual(v["quality"], "GREEN")
+		self.assertIsNone(v["unsendable_reason"])
+		import json as _json
+		self.assertEqual(_json.loads(v["components_json"]), item["components"])
+
+	def test_template_values_say_why_a_template_cannot_be_sent(self):
+		item = dict(self.ITEM, components=[{"type": "BODY", "text": "Hi"}, {"type": "BUTTONS", "buttons": [{"type": "FLOW", "text": "Open"}]}])
+		v = graph.template_values(item)
+		self.assertIn("flow button", v["unsendable_reason"])
+		self.assertIsNone(graph.template_values({"name": "x"})["quality"])
 
 	def test_send_message_posts_json_to_the_number(self):
 		http = Fake(Resp({"messages": [{"id": "wamid.X"}]}))

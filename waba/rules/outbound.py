@@ -113,6 +113,20 @@ def template_payload(to_phone, name, language, params):
 	return payload
 
 
+def template_components_payload(to_phone, name, language, components):
+	"""A template send with its components already built (rules/templates.components_for_send); none for a plain template."""
+	payload = {
+		"messaging_product": "whatsapp",
+		"recipient_type": "individual",
+		"to": wa_digits(to_phone),
+		"type": "template",
+		"template": {"name": name, "language": {"code": language}},
+	}
+	if components:
+		payload["template"]["components"] = components
+	return payload
+
+
 def media_payload(to_phone, kind, media_id, caption="", filename="", reply_to_message_id=None):
 	"""A media message that refers to a file already uploaded to Meta (by id, never by public link)."""
 	body = {"id": media_id}

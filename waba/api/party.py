@@ -9,7 +9,7 @@ from frappe import _
 from frappe.utils import now_datetime
 from frappe.utils.password import get_decrypted_password
 
-from waba import assignment, parties, permissions, teams
+from waba import assignment, parties, permissions, teams, templating
 from waba.api import send
 from waba.api.send import SENDERS
 from waba.rules import consent as rules
@@ -43,6 +43,19 @@ def _my_numbers():
 
 
 @frappe.whitelist()
+def template_form(doctype: str, name: str, number: str, template: str, values: str | dict | None = None):
+	"""The template dialog's content when starting from a Lead, Contact or Customer (nothing is created or sent)."""
+	_party(doctype, name)
+	numbers = {n.name: n for n in _my_numbers()}
+	if number not in numbers:
+		frappe.throw(_("You may not send from that number."), frappe.PermissionError)
+	tpl = frappe.get_doc("Waba Template", template)
+	if tpl.account != numbers[number].account or tpl.status != "APPROVED":
+		frappe.throw(_("That template is not approved on this number's WhatsApp account."))
+	return send._template_form(tpl, doctype, name, "", "", values)
+
+
+@frappe.whitelist()
 def context(doctype: str, name: str):
 	"""Everything the WhatsApp dialog and the form's WhatsApp section need."""
 	_party(doctype, name)
@@ -51,8 +64,8 @@ def context(doctype: str, name: str):
 	for n in _my_numbers():
 		templates = frappe.get_all(
 			"Waba Template",
-			filters={"account": n.account, "status": "APPROVED", "category": rules.UTILITY},
-			fields=["name", "title", "body_text", "variable_count", "language"],
+			filters={"account": n.account, "status": "APPROVED", "category": rules.UTILITY, "unsendable_reason": ["is", "not set"]},
+			fields=["name", "title", "body_text", "variable_count", "language", "header_format"],
 			order_by="title asc",
 		)
 		numbers.append({"name": n.name, "label": n.display_name or n.display_number or n.name, "templates": templates})
@@ -110,7 +123,7 @@ def record_consent(doctype: str, name: str, consent: str, source: str, on: str |
 
 
 @frappe.whitelist(methods=["POST"])
-def start(doctype: str, name: str, number: str, phone: str, template: str, params: str | list | None = None):
+def start(doctype: str, name: str, number: str, phone: str, template: str, params: str | list | dict | None = None):
 	"""Send the first template to a customer from their record. Creates the conversation and assigns it to the sender."""
 	_party(doctype, name)
 	numbers = {n.name: n for n in _my_numbers()}
@@ -130,8 +143,7 @@ def start(doctype: str, name: str, number: str, phone: str, template: str, param
 	tpl = frappe.get_doc("Waba Template", template)
 	if tpl.account != account.name or tpl.status != "APPROVED":
 		frappe.throw(_("That template is not approved on this number's WhatsApp account."))
-	values = send._as_list(params)
-	problems = outbound.validate_params(tpl.body_text, values)
+	_structure, _values, _missing, problems = templating.prepare(tpl, doctype, name, "", "", params)
 	if problems:
 		frappe.throw("<br>".join(_(p) for p in problems), title=_("Please fix the template values"))
 
@@ -153,7 +165,7 @@ def start(doctype: str, name: str, number: str, phone: str, template: str, param
 		frappe.throw(_(message))
 
 	conv = _conversation(existing, conversation_key, number, key, doctype, name)
-	result = send.send_template(conv.name, tpl.name, values)
+	result = send.send_template(conv.name, tpl.name, params)
 	result["conversation"] = conv.name
 	parties.comment(doctype, name, _("WhatsApp template {0} sent to {1} by {2}{3}.").format(
 		tpl.title, key, frappe.utils.get_fullname(), "" if result.get("ok") else _(" (not delivered: {0})").format(result.get("error"))))

@@ -19,12 +19,13 @@ from frappe.utils import now_datetime
 from frappe.utils.password import get_decrypted_password
 
 from waba.constants import DEFAULT_API_VERSION, ROLE_ADMIN, ROLE_AGENT, ROLE_SUPERVISOR
-from waba import parties, permissions, teams
+from waba import parties, permissions, teams, templating
 from waba.meta import graph
 from waba.rules import consent as rules_consent
 from waba.rules import purposes
 from waba.rules import errors, outbound, window
 from waba.rules import media as media_rules
+from waba.rules import templates
 from waba.rules.inbound import preview as make_preview
 
 SENDERS = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT, "System Manager")
@@ -89,7 +90,7 @@ def _send_text(conversation, body, reply_to, origin):
 
 
 @frappe.whitelist(methods=["POST"])
-def send_template(conversation: str, template: str, params: str | list | None = None):
+def send_template(conversation: str, template: str, params: str | list | dict | None = None):
 	"""A rep's template. Always origin Person: the browser cannot choose another origin."""
 	return _send_template(conversation, template, params, purposes.PERSON)
 
@@ -107,35 +108,105 @@ def _send_template(conversation, template, params, origin):
 	if not window.is_window_open(ctx.conversation.last_inbound_at, now_datetime()):  # a business-started conversation counts against Meta's daily limit
 		limit = rules_consent.daily_limit(frappe.db.get_value("Waba Portfolio", ctx.account.portfolio, "messaging_tier"))
 		ctx.refuse_unless(rules_consent.check_daily_limit(parties.started_in_24h(ctx.account.portfolio), limit))
-	values = _as_list(params)
-	problems = outbound.validate_params(tpl.body_text, values)
+	c = ctx.conversation
+	structure, values, _missing, problems = templating.prepare(tpl, c.party_doctype, c.party, c.customer_label, c.profile_name, params)
 	if problems:
 		frappe.throw("<br>".join(_(p) for p in problems), title=_("Please fix the template values"))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
-	payload = outbound.template_payload(ctx.conversation.customer_phone, tpl.template_name, tpl.language, values)
-	return _deliver(
+	header = templating.header_file(structure, values, _library_rows(frappe.session.user), frappe.session.user)
+
+	def build():  # the header file is uploaded only now, after the record exists, so a failed upload leaves a Failed row
+		final = dict(values)
+		if header:
+			content, filename, mime, _cleanup = header
+			final["header.media"] = graph.upload_media(ctx.token, ctx.number.phone_number_id, filename, content, mime, ctx.version)
+		return outbound.template_components_payload(ctx.conversation.customer_phone, tpl.template_name, tpl.language, templates.components_for_send(structure, final))
+
+	result = _deliver(
 		ctx,
-		payload,
+		build,
 		{
 			"message_type": "template",
 			"waba_template": tpl.name,
 			"business_initiated": 0 if window.is_window_open(ctx.conversation.last_inbound_at, now_datetime()) else 1,
-			"body": outbound.fill(tpl.body_text, [str(v).strip() for v in values]),
+			"body": templates.render(structure, values)["body"],
 		},
 		origin,
 	)
+	if header and header[3] and result.get("ok"):
+		frappe.delete_doc("File", header[3], force=True, ignore_permissions=True)  # a temporary upload; the message keeps no copy of a template header
+	return result
 
 
 @frappe.whitelist()
 def templates_for(conversation: str):
-	"""Sendable templates for the conversation's account, for the Send template dialog. Reads the ERP only, so no token is needed."""
+	"""Sendable templates for the conversation's account, for the Send template dialog. Reads the ERP only, so no token is needed.
+	A template with a part the ERP cannot send yet (see rules/templates.py) is left out."""
 	ctx = _Context(conversation, need_token=False)
 	return frappe.get_all(
 		"Waba Template",
-		filters={"account": ctx.account.name, "status": "APPROVED", "category": "UTILITY"},
-		fields=["name", "title", "category", "body_text", "variable_count"],
+		filters={"account": ctx.account.name, "status": "APPROVED", "category": "UTILITY", "unsendable_reason": ["is", "not set"]},
+		fields=["name", "title", "category", "body_text", "variable_count", "language", "header_format"],
 		order_by="title asc",
 	)
+
+
+def _template_form(tpl, party_doctype, party, customer_label="", profile_name="", typed=None):
+	"""Everything the template dialog needs: the template's parts, one entry per value with what the map already filled in,
+	which are still missing, and a preview. Reads only."""
+	structure, values, missing, problems = templating.prepare(tpl, party_doctype, party, customer_label, profile_name, typed)
+	rows = {r["slot"]: r for r in templating.map_rows(tpl)}
+	slots = []
+	for slot in structure["slots"]:
+		row = rows.get(slot["id"], {})
+		value = values.get(slot["id"])
+		slots.append(
+			{
+				"id": slot["id"],
+				"kind": slot["kind"],
+				"component": slot["component"],
+				"label": row.get("label") or slot["label"],
+				"example": row.get("example") or "",
+				"value": value if isinstance(value, str) else (value.get("shared_file") if isinstance(value, dict) else ""),
+				"needs_input": slot["id"] in missing,
+			}
+		)
+	header = structure["header"]
+	files = []
+	if header and header["format"] in templates.MEDIA_FORMATS:
+		for f in shared_files():
+			kind = media_rules.kind_for_mime(_mime_of(f["filename"]))
+			if kind == header["format"].lower():
+				files.append({"name": f["name"], "title": f["title"], "size": f["size"]})
+	ok, why = templates.sendable(structure)
+	return {
+		"template": tpl.name,
+		"title": tpl.title,
+		"category": tpl.category,
+		"language": tpl.language,
+		"sendable": ok,
+		"problem": why,
+		"parts": {
+			"header": {"format": header["format"], "text": header["text"]} if header else None,
+			"body": structure["body"]["text"],
+			"footer": structure["footer"],
+			"buttons": [{"type": b["type"], "text": b["text"], "url": b["url"], "phone": b["phone"]} for b in structure["buttons"]],
+		},
+		"slots": slots,
+		"shared_files": files,
+		"preview": templates.render(structure, values),
+	}
+
+
+@frappe.whitelist()
+def template_form(conversation: str, template: str, values: str | dict | None = None):
+	"""The template dialog's content for this conversation (values already typed are kept and re-previewed)."""
+	ctx = _Context(conversation, need_token=False)
+	tpl = frappe.get_doc("Waba Template", template)
+	if tpl.account != ctx.account.name or tpl.status != "APPROVED":
+		frappe.throw(_("That template is not approved on this conversation's WhatsApp account."))
+	c = ctx.conversation
+	return _template_form(tpl, c.party_doctype, c.party, c.customer_label, c.profile_name, values)
 
 
 @frappe.whitelist(methods=["POST"])

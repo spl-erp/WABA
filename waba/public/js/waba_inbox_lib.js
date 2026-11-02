@@ -322,6 +322,24 @@
 		return null;
 	}
 
+	/** A template text with the values put in. `component` is "header" or "body"; a variable with no value yet stays as {{name}}
+	 * (returned as plain text: the caller escapes it). */
+	function fillTemplate(text, component, values) {
+		return String(text == null ? "" : text).replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (whole, key) => {
+			const v = values && values[`${component}.${key}`];
+			return typeof v === "string" && v.trim() ? v.trim() : whole;
+		});
+	}
+
+	/** Which of a form's slots still have no usable value (a media slot counts when a file was chosen). */
+	function missingSlots(slots, values) {
+		return (slots || []).filter((s) => {
+			const v = values && values[s.id];
+			if (v && typeof v === "object") return !(v.shared_file || v.file_url || v.file);
+			return !(typeof v === "string" && v.trim());
+		}).map((s) => s.id);
+	}
+
 	/** WhatsApp's *bold*, _italic_, ~strike~ and ```mono``` on already-escaped (and linkified) HTML. Markers must touch the
 	 * word on both sides and sit at a word boundary, so "5 * 6 * 7" and snake_case_names are left alone; link text and
 	 * addresses are never touched. */
@@ -347,5 +365,5 @@
 			.join("");
 	}
 
-	return { MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
+	return { MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, fillTemplate, missingSlots, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
 });
