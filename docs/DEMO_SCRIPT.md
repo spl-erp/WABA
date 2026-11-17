@@ -4,7 +4,7 @@ Before the team arrives: Meta test connection green, number Enabled, templates s
 customer phone that is a verified recipient of the number.
 
 ## Demo layout (Waba Team tree)
-Common > Sales Domestic (Lead: one user, number owner) > Telecallers (Agent: one user). Add the number under Sales Domestic.
+Common > Sales Domestic (Team Lead: one user, number owner) > Telecallers (Agent: one user). Add the number under Sales Domestic.
 
 ## Steps
 1. As Admin, show the Waba Account: Test connection, last webhook time.

@@ -82,3 +82,25 @@ new row should appear within seconds. If it does not, open the Error Log and the
 | Event rows stay "Pending" | The background worker (queue `short`) is not running |
 | Send fails with "allowed list" (131030) | Recipient not verified on the test number |
 | "Save the access token on the portfolio first" | The Portfolio has no token saved |
+
+## Writing templates in the ERP (C10b)
+
+- **Waba Template > New** makes a draft. Saving never contacts Meta. Fill the name (lowercase letters, digits, underscore),
+  language, category (Utility or Marketing), header, body, footer and buttons. After the first save a row appears for each
+  `{{value}}`; give every one an example, because Meta requires it.
+- **Submit to Meta** (Waba Admin or System Manager only) checks the draft, then sends it. Meta's answer or refusal is shown
+  in Meta's own words and kept in the Submit note. A rejected template can be edited and submitted again.
+- **Copy as new draft** starts from any synced template. **Delete draft** removes a local draft; **More > Delete at Meta**
+  asks you to type the template name first.
+- Marketing templates can be written and approved, but the ERP will not send them one-to-one (first contact stays Utility only).
+- In Meta's webhook configuration subscribe the fields **message_template_status_update**,
+  **message_template_quality_update**, **template_category_update** and **message_template_components_update**, so approval,
+  rejection and quality changes arrive without a manual sync.
+
+
+## Coexistence (a number used in the WhatsApp Business app and in Waba)
+Only for a number Meta has connected to the API while keeping it in the WhatsApp Business app (needs WhatsApp Business app 2.24.17 or newer; Meta documents the onboarding for Solution Partners and Tech Providers, via Embedded Signup).
+1. In the Meta app's WhatsApp webhook settings subscribe these fields as well as `messages`: **smb_message_echoes** (what the team types in the phone app), **account_update** (the phone-app link changed), **history** and **smb_app_state_sync** (kept as received, not imported yet).
+2. On the Waba Number tick **Also used in the WhatsApp Business app**. Never use Register number, Send a code or Enter the code on it: that would cut the phone app link (the buttons are switched off).
+3. The phone app must be opened at least every 14 days, or Meta disconnects the link; Waba then shows the link as Disconnected and alerts the Team Leads.
+4. Meta's throughput for such a number is 20 messages per second (not 80). Messages typed in the phone app are free and do not open or change the 24-hour window.

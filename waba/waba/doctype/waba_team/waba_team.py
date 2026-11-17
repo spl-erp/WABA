@@ -1,5 +1,6 @@
 """A team in the organisation tree: Common at the top, departments, sub-teams. See waba.rules.visibility."""
 
+import frappe
 from frappe.utils.nestedset import NestedSet
 
 
@@ -16,9 +17,13 @@ class WabaTeam(NestedSet):
 
 		super().on_update()
 		teams.reset()
+		if teams.managed():
+			teams.sync_all()
 
 	def on_trash(self):
 		from waba import teams
 
 		super().on_trash()
 		teams.reset()
+		if teams.managed():
+			frappe.enqueue("waba.teams.sync_all", enqueue_after_commit=True)

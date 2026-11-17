@@ -5,10 +5,10 @@ import json
 
 import frappe
 
-from waba.constants import ROLE_ADMIN, ROLE_AGENT, ROLE_SUPERVISOR
+from waba.constants import ROLE_ADMIN, ROLE_AGENT, ROLE_CAMPAIGN, ROLE_SUPERVISOR
 from waba.setup import workspace_spec as spec
 
-ROLES = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT)
+ROLES = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT, ROLE_CAMPAIGN)
 
 
 def ensure_roles():
@@ -60,7 +60,11 @@ def _add_missing_to_workspace():
 	if blocks:
 		body = json.loads(doc.content)
 		doc.content = json.dumps(body + blocks)
-	if new_shortcuts or links_changed or blocks:
+	have_roles = {r.role for r in doc.roles}
+	new_roles = [role for role in spec.VIEWER_ROLES if role not in have_roles and frappe.db.exists("Role", role)]
+	for role in new_roles:
+		doc.append("roles", {"role": role})
+	if new_shortcuts or links_changed or blocks or new_roles:
 		doc.save(ignore_permissions=True)
 
 

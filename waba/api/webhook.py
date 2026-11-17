@@ -17,9 +17,13 @@ from frappe.rate_limiter import rate_limit
 from frappe.utils import now_datetime
 from werkzeug.wrappers import Response
 
-from waba.rules import signature, webhook
+from waba.rules import signature, template_events, webhook
+from waba.rules import coexistence as coexistence_rules
 
 MAX_BODY_BYTES = 1_000_000
+
+# Meta fields a delivery may carry that this ERP acts on; anything else is stored as received and the event is marked Ignored.
+HANDLED_FIELDS = ("messages", coexistence_rules.ECHO_FIELD, coexistence_rules.ACCOUNT_FIELD, *template_events.FIELDS)
 
 
 def _text(status, text=""):
@@ -135,10 +139,20 @@ def process_event(event_name):
 			notes.append("No WhatsApp Account is set up for this WABA ID on this Meta app.")
 		else:
 			notes += _store_message_changes(payload, account, doc.name)
+			notes += _store_echo_changes(payload, account, doc.name)
 			status_notes, waiting = _apply_status_changes(payload)
 			notes += status_notes
+			from waba import coexistence, template_events
+
+			notes += template_events.apply_changes(payload, account)
+			notes += coexistence.apply_account_updates(payload, account)
+			unhandled = [f for f in summary["fields"] if f not in HANDLED_FIELDS]
+			if unhandled:
+				notes.append("Not handled yet, kept as received: " + ", ".join(unhandled) + ".")
 			if waiting:
 				status = "Waiting"
+			elif unhandled and len(unhandled) == len(summary["fields"]):
+				status = "Ignored"
 		doc.db_set(
 			{"status": status, "waba_account": account, "waba_number": number, "note": " ".join(notes) or None},
 			update_modified=False,
@@ -210,6 +224,36 @@ def _store_message_changes(payload, account, event):
 		notes.append(f"{stored} message(s) stored" + (f", {duplicates} already known." if duplicates else "."))
 	if unidentified:
 		notes.append(f"{unidentified} message(s) had no usable sender.")
+	if unknown:
+		notes.append("Number not set up yet (run Sync numbers on the account): " + ", ".join(sorted(unknown)) + ".")
+	return notes
+
+
+def _store_echo_changes(payload, account, event):
+	"""`smb_message_echoes`: what the business typed in the WhatsApp Business app (coexistence). Stored as outgoing Phone app messages."""
+	from waba import inbound
+	from waba.rules import coexistence
+
+	notes, stored, duplicates, unidentified, edited, unknown = [], 0, 0, 0, 0, set()
+	for entry in payload.get("entry") or []:
+		for change in (entry.get("changes") or []) if isinstance(entry, dict) else []:
+			value = change.get("value") if isinstance(change, dict) and isinstance(change.get("value"), dict) else None
+			if not value or change.get("field") != coexistence.ECHO_FIELD or not value.get("message_echoes"):
+				continue
+			phone_number_id = str((value.get("metadata") or {}).get("phone_number_id") or "")
+			number = _number_for([phone_number_id], account)
+			if not number:
+				unknown.add(phone_number_id)
+				continue
+			counts = inbound.store_echoes(value, number, event)
+			stored += counts["stored"]
+			duplicates += counts["duplicates"]
+			unidentified += counts["unidentified"]
+			edited += counts["edited"]
+	if stored or duplicates or edited:
+		notes.append(f"{stored} phone-app message(s) stored" + (f", {duplicates} already known" if duplicates else "") + (f", {edited} edited or deleted." if edited else "."))
+	if unidentified:
+		notes.append(f"{unidentified} phone-app message(s) had no usable recipient.")
 	if unknown:
 		notes.append("Number not set up yet (run Sync numbers on the account): " + ", ".join(sorted(unknown)) + ".")
 	return notes

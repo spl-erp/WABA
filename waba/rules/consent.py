@@ -36,9 +36,16 @@ _START = {"start", "unstop"}
 _TIERS = {"TIER_50": 50, "TIER_250": 250, "TIER_1K": 1000, "TIER_2K": 2000, "TIER_10K": 10000, "TIER_100K": 100000}
 
 
-def check_template(category, has_written_before, consent, opted_out):
-	"""(ok, code, message). `category` is the template's Meta category; `consent` is "Yes" / "No" / "Unknown" (or blank)."""
-	if (category or "").upper() != UTILITY:
+def check_template(category, has_written_before, consent, opted_out, allow_marketing=False, marketing_blocked=False):
+	"""(ok, code, message). `category` is the template's Meta category; `consent` is "Yes" / "No" / "Unknown" (or blank).
+
+	`allow_marketing` lets MARKETING templates through the same checks as Utility (an admin switch, on for now);
+	`marketing_blocked` is a STOP PROMO or a marketing "No", which still stops a Marketing template. Authentication never goes."""
+	category = (category or "").upper()
+	if category == "MARKETING" and allow_marketing:
+		if marketing_blocked:
+			return False, MARKETING_OPTED_OUT, "This customer has opted out of marketing messages."
+	elif category != UTILITY:
 		return False, NOT_UTILITY, (
 			"Only Utility templates can be used to start a conversation. Marketing templates need the campaigns release."
 		)

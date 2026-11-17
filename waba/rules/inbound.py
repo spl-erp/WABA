@@ -69,6 +69,46 @@ def parse_messages(value):
 	return out
 
 
+def parse_echoes(value):
+	"""One dict per message in an `smb_message_echoes` value (what the business typed in the phone app). Same shape as
+	parse_messages, but the customer is the RECIPIENT (`to`, `to_user_id`), never `from` (our own number). Extra keys:
+	`action` ("new", "edit" or "revoke") and `original_id` (the message an edit or revoke is about). The field names follow
+	Meta's reference and are UNVERIFIED against a live number."""
+	from waba.rules import coexistence
+
+	contacts = [c for c in (value.get("contacts") or []) if isinstance(c, dict)]
+	out = []
+	for message in value.get("message_echoes") or []:
+		if not isinstance(message, dict) or not message.get("id"):
+			continue
+		recipient = message.get("to")
+		contact = next(
+			(c for c in contacts if recipient and recipient in (c.get("wa_id"), c.get("user_id"))),
+			contacts[0] if len(contacts) == 1 else {},
+		)
+		phone, bsuid = _identity([message.get("to_user_id"), recipient, contact.get("wa_id"), contact.get("user_id"), message.get("to_parent_user_id")])
+		action = coexistence.is_edit_or_revoke(message) or "new"
+		content = message["message"] if action == "edit" else message
+		kind = str(content.get("type") or message.get("type") or "unknown")
+		profile = contact.get("profile") if isinstance(contact.get("profile"), dict) else {}
+		out.append(
+			{
+				"message_id": str(message["id"]),
+				"action": action,
+				"original_id": str(message["original_message_id"]) if message.get("original_message_id") else None,
+				"phone": phone,
+				"bsuid": bsuid,
+				"profile_name": profile.get("name"),
+				"timestamp": _int(message.get("timestamp")),
+				"type": kind,
+				"body": body_text(content, kind) if action != "revoke" else "",
+				"reply_to": (content.get("context") or {}).get("id") if isinstance(content.get("context"), dict) else None,
+				**details(content, kind),
+			}
+		)
+	return out
+
+
 def details(message, kind):
 	"""The structured parts of a message kept beside its readable text: file reference, place, contact card, reaction
 	target and button or list reply id. Keys that do not apply are None, so every message has the same shape."""

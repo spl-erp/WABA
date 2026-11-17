@@ -158,7 +158,7 @@ Each feature says what the user can do and what the system guarantees.
 
 ## 8. What we will not do
 
-Read reps' personal WhatsApp chats; recover history from before go-live; run groups or the calling feature; run customer-facing chatbots or AI in version 1; message anyone the system cannot show consent for, outside an open window.
+Read reps' personal WhatsApp chats (a number used in the WhatsApp Business app through coexistence is different: what the team types there is shown in the ERP chat, as "Phone app"); recover history from before go-live; run groups or the calling feature; run customer-facing chatbots or AI in version 1; message anyone the system cannot show consent for, outside an open window.
 
 ## 9. What has to be true first
 

@@ -166,12 +166,52 @@ def phone_opt_outs(phone, waba_number):
 
 def check_conversation_template(conversation, category):
 	"""(ok, code, message) for sending a template of `category` into `conversation`."""
-	state, flag = rules.CONSENT_UNKNOWN, False
+	state, flag, marketing_no = rules.CONSENT_UNKNOWN, False, False
 	if conversation.party_doctype and conversation.party:
 		info = consent(conversation.party_doctype, conversation.party)
 		state, flag = info["state"], info["flag"]
-	elsewhere = phone_opt_outs(conversation.get("customer_phone"), conversation.get("waba_number"))["opted_out"]
-	return rules.check_template(category, written_before(conversation), state, bool(conversation.get("opted_out")) or flag or elsewhere)
+		marketing_no = info["marketing"]["state"] == rules.CONSENT_NO
+	outs = phone_opt_outs(conversation.get("customer_phone"), conversation.get("waba_number"))
+	return rules.check_template(
+		category,
+		written_before(conversation),
+		state,
+		bool(conversation.get("opted_out")) or flag or outs["opted_out"],
+		allow_marketing=marketing_allowed(),
+		marketing_blocked=marketing_no or bool(conversation.get("marketing_opted_out")) or outs["marketing_opted_out"],
+	)
+
+
+def check_campaign_template(conversation, category):
+	"""(ok, code, message) for a campaign message into `conversation`: STOP, STOP PROMO and a no always block; the rest follows
+	the audience rule in Waba Settings (Everyone for now)."""
+	from waba import campaigns
+	from waba.rules import campaign as campaign_rules
+
+	state, marketing, flag = rules.CONSENT_UNKNOWN, rules.CONSENT_UNKNOWN, False
+	if conversation.party_doctype and conversation.party:
+		info = consent(conversation.party_doctype, conversation.party)
+		state, marketing, flag = info["state"], info["marketing"]["state"], info["flag"]
+	outs = phone_opt_outs(conversation.get("customer_phone"), conversation.get("waba_number"))
+	return campaign_rules.check_consent(
+		category,
+		state,
+		marketing,
+		bool(conversation.get("opted_out")) or flag or outs["opted_out"],
+		bool(conversation.get("marketing_opted_out")) or outs["marketing_opted_out"],
+		campaigns.audience_rule(),
+		bool(written_before(conversation)),
+	)
+
+
+def marketing_allowed():
+	"""The Waba Settings switch: may reps send approved Marketing templates one to one (same consent as Utility)."""
+	return bool(frappe.db.get_single_value("Waba Settings", "allow_marketing_templates"))
+
+
+def pickable_categories():
+	"""Template categories the dialogs list."""
+	return ["UTILITY", "MARKETING"] if marketing_allowed() else ["UTILITY"]
 
 
 def started_in_24h(portfolio):

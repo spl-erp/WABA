@@ -6,13 +6,14 @@ rules too); this module adds who may use which number and which of the record's 
 
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import cint, now_datetime
 from frappe.utils.password import get_decrypted_password
 
 from waba import assignment, parties, permissions, teams, templating
 from waba.api import send
 from waba.api.send import SENDERS
 from waba.rules import consent as rules
+from waba.rules import campaign as campaign_rules
 from waba.rules import inbound, outbound, purposes, window
 
 CONSENT_SOURCES = ["IndiaMART enquiry", "Website form", "Verbal / phone call", "QR code scan", "Email", "WhatsApp message", "Other"]
@@ -56,15 +57,17 @@ def template_form(doctype: str, name: str, number: str, template: str, values: s
 
 
 @frappe.whitelist()
-def context(doctype: str, name: str):
-	"""Everything the WhatsApp dialog and the form's WhatsApp section need."""
+def context(doctype: str, name: str, utility_only: int | bool = 0):
+	"""Everything the WhatsApp dialog and the form's WhatsApp section need. `utility_only` keeps Marketing templates out of the
+	list (the inbox's New conversation offers Utility only)."""
 	_party(doctype, name)
+	categories = ["UTILITY"] if cint(utility_only) else parties.pickable_categories()
 	info = parties.consent(doctype, name)
 	numbers = []
 	for n in _my_numbers():
 		templates = frappe.get_all(
 			"Waba Template",
-			filters={"account": n.account, "status": "APPROVED", "category": rules.UTILITY, "unsendable_reason": ["is", "not set"]},
+			filters={"account": n.account, "status": "APPROVED", "category": ["in", categories], "unsendable_reason": ["is", "not set"]},
 			fields=["name", "title", "body_text", "variable_count", "language", "header_format"],
 			order_by="title asc",
 		)
@@ -207,3 +210,61 @@ def _conversation(existing, conversation_key, number, key, doctype, name):
 	assignment.add_event(conv.name, _("Conversation started by {0} from {1} {2}.").format(frappe.utils.get_fullname(me), doctype, name))
 	assignment.notify(conv, "assigned")
 	return conv
+
+
+# ------------------------------------------------------------------------------------------------ New conversation (inbox)
+
+SEARCH_FIELDS = {
+	"Lead": (("lead_name", "company_name", "name"), ("mobile_no", "whatsapp_no", "phone")),
+	"Customer": (("customer_name", "name"), ("mobile_no",)),
+	"Contact": (("first_name", "last_name", "company_name", "name"), ("mobile_no", "phone")),
+}
+SEARCH_LIMIT = 15
+
+
+@frappe.whitelist()
+def search_people(query: str):
+	"""Leads, Contacts and Customers that match a name, a company or part of a phone number, for the inbox's New conversation.
+	Only records this person may read (the same permission rule as the ERP lists); the phone is shown masked."""
+	frappe.only_for(SENDERS)
+	text = (query or "").strip()
+	if len(text) < 2:
+		return []
+	digits = "".join(ch for ch in text if ch.isdigit())
+	found = []
+	for doctype, (name_fields, phone_fields) in SEARCH_FIELDS.items():
+		meta = frappe.get_meta(doctype)
+		like = f"%{text}%"
+		or_filters = [[f, "like", like] for f in name_fields if f == "name" or meta.has_field(f)]
+		if len(digits) >= 4:
+			or_filters += [[f, "like", f"%{digits}%"] for f in phone_fields if meta.has_field(f)]
+		title_field = meta.get_title_field()
+		rows = frappe.get_list(doctype, or_filters=or_filters, fields=["name"] + ([title_field] if title_field and title_field != "name" else []), limit_page_length=8, order_by="modified desc")
+		for r in rows:
+			keys = [p["key"] for p in parties.phones(doctype, r.name) if p["key"]]
+			found.append(
+				{
+					"doctype": doctype,
+					"name": r.name,
+					"title": (r.get(title_field) if title_field else None) or r.name,
+					"phone_hint": campaign_rules.mask_phone(keys[0]) if keys else "",
+					"has_phone": bool(keys),
+				}
+			)
+	return found[:SEARCH_LIMIT * 2]
+
+
+@frappe.whitelist(methods=["POST"])
+def start_chat(doctype: str, name: str, number: str, phone: str, template: str, params: str | list | dict | None = None):
+	"""Start a conversation from the inbox: a Utility template to a person in the ERP. If this person already has a chat on that
+	number the caller is told which one (`existing`) instead of a second chat being made. Everything else is `start`."""
+	_party(doctype, name)
+	if (frappe.db.get_value("Waba Template", template, "category") or "").upper() != "UTILITY":
+		frappe.throw(_("Only Utility templates can start a conversation from the inbox."))
+	usable = {p["raw"]: p["key"] for p in parties.phones(doctype, name) if p["key"]}
+	key = usable.get(phone) or (phone if phone in usable.values() else None)
+	if key:
+		existing = frappe.db.get_value("Waba Conversation", {"conversation_key": inbound.conversation_key(number, key, None)}, "name")
+		if existing and permissions.conversation_has_permission(frappe.get_doc("Waba Conversation", existing)):
+			return {"ok": False, "existing": existing, "error": _("This person already has a conversation on that number. Opening it.")}
+	return start(doctype, name, number, phone, template, params)

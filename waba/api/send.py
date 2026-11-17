@@ -1,6 +1,6 @@
 """Sending from the ERP: a free-text reply inside the 24-hour window, or an approved template at any time.
 
-Who may send: Waba Admin, Waba Supervisor, Waba Agent and System Manager; which conversations a person may open or send in is
+Who may send: Waba Admin, Waba Supervisor and Waba Agent; which conversations a person may open or send in is
 decided by waba.permissions (the team tree). Every send is stored as an outgoing Waba Message BEFORE Meta is
 called (status Queued), so a failure is never lost: it is kept as Failed with Meta's code and a plain explanation. Meta
 then reports Sent / Delivered / Read / Failed through the webhook (see waba.status_updates).
@@ -19,7 +19,7 @@ from frappe.utils import now_datetime
 from frappe.utils.password import get_decrypted_password
 
 from waba.constants import DEFAULT_API_VERSION, ROLE_ADMIN, ROLE_AGENT, ROLE_SUPERVISOR
-from waba import parties, permissions, teams, templating
+from waba import assignment, dedupe, parties, permissions, privacy, teams, templating
 from waba.meta import graph
 from waba.rules import consent as rules_consent
 from waba.rules import purposes
@@ -28,7 +28,7 @@ from waba.rules import media as media_rules
 from waba.rules import templates
 from waba.rules.inbound import preview as make_preview
 
-SENDERS = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT, "System Manager")
+SENDERS = (ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT)  # System Manager alone does not open the inbox
 
 
 class _Context:
@@ -44,6 +44,8 @@ class _Context:
 		if not (self.number.enabled and self.account.enabled):
 			frappe.throw(_("The number or its WhatsApp account is switched off."))
 		self.receive_only = bool(self.number.get("receive_only"))
+		self.override_reason = None  # a Team Lead or admin's reason for sending flagged details anyway (waba.privacy)
+		self.skip_privacy = False  # set only when sending an already-recorded message again
 		self.refuse_unless(purposes.check({p: self.number.get(f"purpose_{p}") for p in purposes.PURPOSES}, purpose))
 		self.token = get_decrypted_password("Waba Portfolio", self.account.portfolio, "access_token", raise_exception=False)
 		if need_token and not self.token:
@@ -75,41 +77,44 @@ def _as_list(params):
 
 
 @frappe.whitelist(methods=["POST"])
-def send_text(conversation: str, body: str, reply_to: str | None = None):
-	"""A rep's reply. Always origin Person: the browser cannot choose another origin."""
-	return _send_text(conversation, body, reply_to, purposes.PERSON)
+def send_text(conversation: str, body: str, reply_to: str | None = None, override_reason: str | None = None, client_key: str | None = None):
+	"""A rep's reply. Always origin Person: the browser cannot choose another origin. `client_key` (optional) makes a repeated attempt harmless."""
+	return dedupe.once(conversation, client_key, lambda: _send_text(conversation, body, reply_to, purposes.PERSON, override_reason))
 
 
-def _send_text(conversation, body, reply_to, origin):
+def _send_text(conversation, body, reply_to, origin, override_reason=None, skip_privacy=False, person=True, extra=None):
+	"""`person=False` for a message the system sends (a bot): nobody is recorded as the sender. `extra` adds fields to the stored message."""
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.override_reason, ctx.skip_privacy = override_reason, skip_privacy
 	ctx.refuse_if_receive_only()
 	ctx.refuse_unless(outbound.check_free_text(body, ctx.conversation.last_inbound_at, now_datetime()))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
 	payload = outbound.text_payload(ctx.conversation.customer_phone, body, reply_to)
-	return _deliver(ctx, payload, {"message_type": "text", "body": body.strip(), "reply_to_message_id": reply_to}, origin)
+	return _deliver(ctx, payload, {"message_type": "text", "body": body.strip(), "reply_to_message_id": reply_to, **(extra or {})}, origin, sent_by=False if person else None)
 
 
 @frappe.whitelist(methods=["POST"])
-def send_template(conversation: str, template: str, params: str | list | dict | None = None):
-	"""A rep's template. Always origin Person: the browser cannot choose another origin."""
-	return _send_template(conversation, template, params, purposes.PERSON)
+def send_template(conversation: str, template: str, params: str | list | dict | None = None, override_reason: str | None = None, client_key: str | None = None):
+	"""A rep's template. Always origin Person: the browser cannot choose another origin. `client_key` (optional) makes a repeated attempt harmless."""
+	return dedupe.once(conversation, client_key, lambda: _send_template(conversation, template, params, purposes.PERSON, override_reason=override_reason))
 
 
-def _send_template(conversation, template, params, origin, person=True, sender_label=None, reference=None):
+def _send_template(conversation, template, params, origin, person=True, sender_label=None, reference=None, override_reason=None, rows_override=None):
 	"""The one template sender. Notifications, reminders and campaigns call this with their own origin (server side only)."""
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.override_reason = override_reason
 	ctx.refuse_if_receive_only()
 	tpl = frappe.get_doc("Waba Template", template)
 	if tpl.account != ctx.account.name:
 		frappe.throw(_("That template belongs to a different WhatsApp account."))
 	if tpl.status != "APPROVED":
 		frappe.throw(_("Template {0} is {1}, so it cannot be sent.").format(tpl.title, tpl.status))
-	ctx.refuse_unless(parties.check_conversation_template(ctx.conversation, tpl.category))
+	ctx.refuse_unless(parties.check_campaign_template(ctx.conversation, tpl.category) if origin == purposes.CAMPAIGN else parties.check_conversation_template(ctx.conversation, tpl.category))
 	if not window.is_window_open(ctx.conversation.last_inbound_at, now_datetime()):  # a business-started conversation counts against Meta's daily limit
 		limit = rules_consent.daily_limit(frappe.db.get_value("Waba Portfolio", ctx.account.portfolio, "messaging_tier"))
 		ctx.refuse_unless(rules_consent.check_daily_limit(parties.started_in_24h(ctx.account.portfolio), limit))
 	c = ctx.conversation
-	structure, values, _missing, problems = templating.prepare(tpl, c.party_doctype, c.party, c.customer_label, c.profile_name, params, sender_label, reference)
+	structure, values, _missing, problems = templating.prepare(tpl, c.party_doctype, c.party, c.customer_label, c.profile_name, params, sender_label, reference, rows_override)
 	if problems:
 		frappe.throw("<br>".join(_(p) for p in problems), title=_("Please fix the template values"))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
@@ -139,17 +144,66 @@ def _send_template(conversation, template, params, origin, person=True, sender_l
 	return result
 
 
-AUTOMATIC_ORIGINS = (purposes.NOTIFICATION, purposes.REMINDER, purposes.SYSTEM)
+AUTOMATIC_ORIGINS = (purposes.NOTIFICATION, purposes.REMINDER, purposes.SYSTEM, purposes.CAMPAIGN, purposes.AUTO_REPLY)
 
 
-def send_automatic(conversation, template, params, origin, sender_label=None, reference=None):
+def send_automatic(conversation, template, params, origin, sender_label=None, reference=None, rows_override=None):
 	"""A template sent by the system (a notification or reminder), not by a person. Server side only: it is not whitelisted,
 	so the browser cannot reach it or choose an origin. Every check of a person's send still runs inside `_send_template`
 	(receive-only, purposes, consent, STOP, approved template, daily limit); only the person-bound parts are replaced:
 	nobody is recorded as the sender, a 'Sender name' value reads `sender_label`, and a header must come from the shared library."""
 	if origin not in AUTOMATIC_ORIGINS:
-		frappe.throw(_("An automatic message must have the origin Notification, Reminder or System."))
-	return _send_template(conversation, template, params, origin, person=False, sender_label=sender_label, reference=reference)
+		frappe.throw(_("An automatic message must have the origin Notification, Reminder, Campaign, Auto-reply or System."))
+	return _send_template(conversation, template, params, origin, person=False, sender_label=sender_label, reference=reference, rows_override=rows_override)
+
+
+def send_automatic_text(conversation, body, origin=purposes.AUTO_REPLY, extra=None):
+	"""Free text sent by the system (a bot's message). Server side only. Like every send it needs the 24-hour window, the number
+	switched on for conversations and not receive-only; nobody is recorded as the sender."""
+	if origin not in AUTOMATIC_ORIGINS:
+		frappe.throw(_("An automatic message must have the origin Notification, Reminder, Campaign, Auto-reply or System."))
+	return _send_text(conversation, body, None, origin, person=False, extra=extra)
+
+
+def send_automatic_cta(conversation, body, button_text, url, origin=purposes.AUTO_REPLY, extra=None):
+	"""A message with one button that opens a web address, sent by the system (a bot's Link button). Server side only. Same checks
+	as every free-text send: the 24-hour window, the number switched on for conversations and not receive-only."""
+	if origin not in AUTOMATIC_ORIGINS:
+		frappe.throw(_("An automatic message must have the origin Notification, Reminder, Campaign, Auto-reply or System."))
+	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.refuse_if_receive_only()
+	ctx.refuse_unless(outbound.check_free_text(body, ctx.conversation.last_inbound_at, now_datetime()))
+	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
+	problems = outbound.check_cta(body, button_text, url)
+	if problems:
+		frappe.throw("<br>".join(_(p) for p in problems))
+	payload = outbound.cta_payload(ctx.conversation.customer_phone, body, button_text, url)
+	return _deliver(ctx, payload, {"message_type": "interactive", "body": f"{body.strip()}\n\n[{button_text.strip()}] {url.strip()}", **(extra or {})}, origin, sent_by=None)
+
+
+def send_automatic_interactive(conversation, kind, body, choices, button_text=None, origin=purposes.AUTO_REPLY, extra=None):
+	"""Reply buttons (`kind` "buttons", at most three) or a list (`kind` "list", at most ten) sent by the system. Server side only.
+	`choices` is [{"id", "title"}] (a list row may also have a "description"). The stored message shows the text and the choices."""
+	if origin not in AUTOMATIC_ORIGINS:
+		frappe.throw(_("An automatic message must have the origin Notification, Reminder, Campaign, Auto-reply or System."))
+	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.refuse_if_receive_only()
+	ctx.refuse_unless(outbound.check_free_text(body, ctx.conversation.last_inbound_at, now_datetime()))
+	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
+	phone = ctx.conversation.customer_phone
+	if kind == "buttons":
+		problems = outbound.check_buttons(body, choices)
+		build = lambda: outbound.buttons_payload(phone, body, choices)  # noqa: E731
+		shown = "  ".join(f"[{c['title'].strip()}]" for c in choices)
+	elif kind == "list":
+		problems = outbound.check_list(body, button_text, choices)
+		build = lambda: outbound.list_payload(phone, body, button_text, choices)  # noqa: E731
+		shown = f"{(button_text or '').strip()}: " + ", ".join(c["title"].strip() for c in choices)
+	else:
+		frappe.throw(_("Unknown kind of interactive message."))
+	if problems:
+		frappe.throw("<br>".join(_(p) for p in problems))
+	return _deliver(ctx, build(), {"message_type": "interactive", "body": f"{body.strip()}\n\n{shown}", **(extra or {})}, origin, sent_by=None)
 
 
 @frappe.whitelist()
@@ -159,16 +213,16 @@ def templates_for(conversation: str):
 	ctx = _Context(conversation, need_token=False)
 	return frappe.get_all(
 		"Waba Template",
-		filters={"account": ctx.account.name, "status": "APPROVED", "category": "UTILITY", "unsendable_reason": ["is", "not set"]},
+		filters={"account": ctx.account.name, "status": "APPROVED", "category": ["in", parties.pickable_categories()], "unsendable_reason": ["is", "not set"]},
 		fields=["name", "title", "category", "body_text", "variable_count", "language", "header_format"],
 		order_by="title asc",
 	)
 
 
-def _template_form(tpl, party_doctype, party, customer_label="", profile_name="", typed=None, sender_label=None, reference=None):
+def _template_form(tpl, party_doctype, party, customer_label="", profile_name="", typed=None, sender_label=None, reference=None, rows_override=None):
 	"""Everything the template dialog needs: the template's parts, one entry per value with what the map already filled in,
 	which are still missing, and a preview. Reads only."""
-	structure, values, missing, problems = templating.prepare(tpl, party_doctype, party, customer_label, profile_name, typed, sender_label, reference)
+	structure, values, missing, problems = templating.prepare(tpl, party_doctype, party, customer_label, profile_name, typed, sender_label, reference, rows_override)
 	rows = {r["slot"]: r for r in templating.map_rows(tpl)}
 	slots = []
 	for slot in structure["slots"]:
@@ -248,6 +302,11 @@ def _deliver(ctx, payload, values, origin=purposes.PERSON, on_created=None, sent
 	`on_created(message)` runs once the record exists (a file copy is attached to it there)."""
 	if getattr(ctx, "receive_only", False):  # backstop: every sender above already checked, but nothing may slip through
 		return {"ok": False, "error": _(purposes.check_send_allowed(True)[2])}
+	stopped = privacy.check(ctx, values.get("body"), origin, getattr(ctx, "override_reason", None))  # sensitive details: before anything is stored or sent
+	if stopped:
+		return stopped
+	if origin == purposes.PERSON and sent_by is False:
+		_person_takes_over(ctx.conversation)
 	now = now_datetime()
 	shown = values.get("preview") or make_preview(values.get("body"))
 	message = frappe.get_doc(
@@ -303,6 +362,16 @@ def _deliver(ctx, payload, values, origin=purposes.PERSON, on_created=None, sent
 	return {"ok": True, "message": message.name, "message_id": message_id}
 
 
+def _person_takes_over(conversation):
+	"""A person typing in a chat the bot is handling ends the bot's turn. Never blocks the send."""
+	try:
+		from waba import bot
+
+		bot.on_agent_reply(conversation)
+	except Exception:
+		frappe.log_error(title="Waba: stopping a bot after a person replied failed")
+
+
 def _note_account_problem(account, error, text):
 	action = errors.classify(error.code)[0]
 	values = {"last_error": text}
@@ -328,9 +397,11 @@ def _mime_of(filename):
 	return media_rules.clean_mime(mimetypes.guess_type(filename or "")[0])
 
 
-def _send_media(conversation, content, filename, mime, caption, reply_to, origin):
-	"""The one file sender (device file, ERP document, library file). All checks happen before anything is created."""
+def _send_media(conversation, content, filename, mime, caption, reply_to, origin, override_reason=None, skip_privacy=False, person=True, extra=None):
+	"""The one file sender (device file, ERP document, library file). All checks happen before anything is created.
+	`person=False` for a file the system sends (a bot): nobody is recorded as the sender. `extra` adds fields to the stored message."""
 	ctx = _Context(conversation, purpose=purposes.purpose_for(origin))
+	ctx.override_reason, ctx.skip_privacy = override_reason, skip_privacy
 	ctx.refuse_if_receive_only()
 	ctx.refuse_unless(outbound.check_media_send(ctx.conversation.last_inbound_at, now_datetime()))
 	ctx.refuse_unless(outbound.check_recipient(ctx.conversation.customer_phone))
@@ -377,9 +448,11 @@ def _send_media(conversation, content, filename, mime, caption, reply_to, origin
 			"media_size": len(content),
 			"media_status": "Downloaded",
 			"reply_to_message_id": reply_to,
+			**(extra or {}),
 		},
 		origin,
 		on_created=keep,
+		sent_by=False if person else None,
 	)
 
 
@@ -389,7 +462,7 @@ def _read_file(record):
 
 
 @frappe.whitelist(methods=["POST"])
-def send_file(conversation: str, file_url: str, caption: str = "", reply_to: str | None = None, filename: str = ""):
+def send_file(conversation: str, file_url: str, caption: str = "", reply_to: str | None = None, filename: str = "", override_reason: str | None = None):
 	"""A rep's file from their own device. The browser uploads it privately first; only that person's own, unattached,
 	private upload can be sent, so nobody can send another user's file by guessing an address."""
 	frappe.only_for(SENDERS)
@@ -405,21 +478,45 @@ def send_file(conversation: str, file_url: str, caption: str = "", reply_to: str
 		frappe.throw(_("This file is larger than WhatsApp allows."))
 	doc = frappe.get_doc("File", record.name)
 	shown_name = media_rules.safe_filename(filename or doc.file_name, _mime_of(doc.file_name))  # the name the person chose; Frappe adds a suffix when a name repeats
-	result = _send_media(conversation, _read_file(doc), shown_name, _mime_of(doc.file_name), caption, reply_to, purposes.PERSON)
+	result = _send_media(conversation, _read_file(doc), shown_name, _mime_of(doc.file_name), caption, reply_to, purposes.PERSON, override_reason)
+	if result.get("blocked"):
+		return result  # keep the upload: the person may send it again with a reason, or change the caption
 	frappe.delete_doc("File", record.name, force=True, ignore_permissions=True)  # the message keeps its own copy
 	return result
 
 
 @frappe.whitelist(methods=["POST"])
-def send_document(conversation: str, doctype: str, name: str, caption: str = "", reply_to: str | None = None):
+def send_document(conversation: str, doctype: str, name: str, caption: str = "", reply_to: str | None = None, override_reason: str | None = None, client_key: str | None = None):
 	"""An ERP document (quotation, order, invoice, delivery note) as a PDF, if this person may read that document."""
 	frappe.only_for(SENDERS)
+	return dedupe.once(conversation, client_key, lambda: _send_document(conversation, doctype, name, caption, reply_to, override_reason))
+
+
+def _send_document(conversation, doctype, name, caption, reply_to, override_reason):
 	if doctype not in PRINTABLE:
 		frappe.throw(_("{0} cannot be sent from here.").format(doctype))
 	if not frappe.has_permission(doctype, "read", name):
 		frappe.throw(_("You may not read {0} {1}.").format(doctype, name), frappe.PermissionError)
 	content = frappe.get_print(doctype, name, as_pdf=True)
-	return _send_media(conversation, content, f"{name}.pdf", "application/pdf", caption, reply_to, purposes.PERSON)
+	result = _send_media(conversation, content, f"{name}.pdf", "application/pdf", caption, reply_to, purposes.PERSON, override_reason)
+	if result.get("ok"):
+		_log_shared_document(conversation, doctype, name)
+	return result
+
+
+def _log_shared_document(conversation, doctype, name, who=None):
+	"""Sharing an ERP document with a customer is an activity: it goes on the Lead / Contact / Customer's timeline and into the
+	conversation, so anyone looking at either can see who sent what. Records only the document's name, never its content, and
+	can never undo a message that has already gone out."""
+	try:
+		conv = frappe.db.get_value("Waba Conversation", conversation, ["party_doctype", "party", "customer_phone"], as_dict=True)
+		who = who or frappe.utils.get_fullname(frappe.session.user)  # a bot passes its own label
+		text = _("{0} shared {1} {2} as a PDF on WhatsApp with {3}.").format(who, _(doctype), name, conv.customer_phone or _("the customer"))
+		assignment.add_event(conversation, text)
+		if conv.party_doctype in parties.PARTY_DOCTYPES and conv.party and frappe.db.exists(conv.party_doctype, conv.party):
+			parties.comment(conv.party_doctype, conv.party, text)
+	except Exception:
+		frappe.log_error(title="Waba: could not log a shared document")
 
 
 def _library_rows(user):
@@ -455,14 +552,18 @@ def shared_files():
 
 
 @frappe.whitelist(methods=["POST"])
-def send_library_file(conversation: str, shared_file: str, caption: str = "", reply_to: str | None = None):
+def send_library_file(conversation: str, shared_file: str, caption: str = "", reply_to: str | None = None, override_reason: str | None = None, client_key: str | None = None):
 	"""A file from the shared library, if it is offered to this person."""
 	frappe.only_for(SENDERS)
+	return dedupe.once(conversation, client_key, lambda: _send_library_file(conversation, shared_file, caption, reply_to, override_reason))
+
+
+def _send_library_file(conversation, shared_file, caption, reply_to, override_reason):
 	row = next((r for r in _library_rows(frappe.session.user) if r.name == shared_file), None)
 	if not row:
 		frappe.throw(_("That file is not available to you."), frappe.PermissionError)
 	doc = frappe.get_doc("File", {"file_url": row.file})
-	return _send_media(conversation, _read_file(doc), doc.file_name, _mime_of(doc.file_name), caption, reply_to, purposes.PERSON)
+	return _send_media(conversation, _read_file(doc), doc.file_name, _mime_of(doc.file_name), caption, reply_to, purposes.PERSON, override_reason)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -502,10 +603,10 @@ def retry_message(message: str):
 	if msg.error_code and errors.classify(msg.error_code)[0] in errors.NEVER_RETRY_SAME:
 		frappe.throw(_("Sending the same message again would fail the same way: {0}").format(msg.error_message or ""))
 	if msg.message_type == "text":
-		result = _send_text(msg.conversation, msg.body or "", msg.reply_to_message_id, purposes.PERSON)
+		result = _send_text(msg.conversation, msg.body or "", msg.reply_to_message_id, purposes.PERSON, skip_privacy=True)
 	elif msg.message_type in media_rules.TYPES and msg.media_file:
 		record = frappe.get_doc("File", {"file_url": msg.media_file})
-		result = _send_media(msg.conversation, _read_file(record), msg.media_filename, msg.media_mime, msg.body or "", msg.reply_to_message_id, purposes.PERSON)
+		result = _send_media(msg.conversation, _read_file(record), msg.media_filename, msg.media_mime, msg.body or "", msg.reply_to_message_id, purposes.PERSON, skip_privacy=True)
 	else:
 		frappe.throw(_("This kind of message cannot be sent again from here. Send it again from the conversation."))
 	if result.get("ok"):

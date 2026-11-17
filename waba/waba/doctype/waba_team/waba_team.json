@@ -50,7 +50,7 @@
    "fieldtype": "Table",
    "label": "Numbers",
    "options": "Waba Team Number",
-   "description": "A Lead of this team (or above) sees every conversation on these numbers, assigned or not."
+   "description": "A Team Lead of this team (or above) sees every conversation on these numbers, assigned or not."
   },
   {
    "fieldname": "members_section",
@@ -92,7 +92,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-29 12:00:00.000000",
+ "modified": "2026-11-03 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Team",
@@ -124,7 +124,8 @@
   },
   {
    "role": "Waba Supervisor",
-   "read": 1
+   "read": 1,
+   "write": 1
   },
   {
    "role": "Waba Agent",

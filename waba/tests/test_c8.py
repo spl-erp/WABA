@@ -69,7 +69,7 @@ class TestOriginOnSends(unittest.TestCase):
 				names = [a.arg for a in node.args.args]
 				self.assertNotIn("origin", names, node.name)
 		self.assertIn("def _send_template(conversation, template, params, origin", source)
-		self.assertIn("def _send_text(conversation, body, reply_to, origin)", source)
+		self.assertIn("def _send_text(conversation, body, reply_to, origin, override_reason=None, skip_privacy=False, person=True, extra=None)", source)
 
 	def test_every_message_is_stored_with_its_origin(self):
 		source = read("api", "send.py")

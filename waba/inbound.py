@@ -9,10 +9,11 @@ import datetime
 import json
 
 import frappe
+from frappe import _
 from frappe.utils import convert_utc_to_system_timezone, now_datetime
 
 from waba import assignment, locks, matching, media, parties
-from waba.rules import inbound, window
+from waba.rules import coexistence, inbound, window
 
 
 def _details(m):
@@ -93,9 +94,94 @@ def store_messages(value, number, event):
 			_update_conversation(conversation, m, sent_at, portfolio)
 			counts["stored"] += 1
 			_keyword(conversation, m["body"])
+			_campaign_reply(conversation)
+			_bot(conversation, stored.name)  # after STOP / START (an opted-out customer is never answered) and before routing (a chat in a bot's hands is not handed to an agent)
 			_route(conversation, m["body"])
 		assignment.notify(conversation, "message")
 	return counts
+
+
+def store_echoes(value, number, event):
+	"""Messages the business typed in the WhatsApp Business app (coexistence). Returns {"stored", "duplicates", "unidentified", "edited"}.
+
+	These are OUR side of the chat, so they never run the customer-message logic: no unread, no 24-hour window change, no
+	STOP / START, no campaign reply, no bot start, no assignment, no ring. They are stored as outgoing "Phone app" messages with
+	no ERP user. A message Waba itself sent is already stored under the same id and is skipped. An unknown customer gets an
+	unassigned Triage conversation (nobody is alerted)."""
+	counts = {"stored": 0, "duplicates": 0, "unidentified": 0, "edited": 0}
+	for m in inbound.parse_echoes(value):
+		key = inbound.conversation_key(number, m["phone"], m["bsuid"])
+		if not key:
+			counts["unidentified"] += 1
+			continue
+		if m["action"] != "new":
+			counts["edited"] += _edit_echo(m)
+			continue
+		if frappe.db.exists("Waba Message", {"message_id": m["message_id"]}):
+			counts["duplicates"] += 1
+			continue
+		conversation = _conversation(key, number, m)
+		sent_at = _when(m["timestamp"])
+		first_reply = not frappe.db.exists(
+			"Waba Message", {"conversation": conversation.name, "direction": "Out", "origin": "Phone app", "sent_at": [">=", conversation.last_inbound_at or sent_at]}
+		)
+		try:
+			stored = frappe.get_doc(
+				{
+					"doctype": "Waba Message",
+					"message_id": m["message_id"],
+					"conversation": conversation.name,
+					"direction": "Out",
+					"message_type": m["type"],
+					"preview": inbound.preview(m["body"]),
+					"status": "Sent",
+					"sent_at": sent_at,
+					"waba_number": number,
+					"body": m["body"],
+					"reply_to_message_id": m["reply_to"],
+					"event": event,
+					"origin": "Phone app",
+					**_details(m),
+				}
+			).insert(ignore_permissions=True)
+		except _CLASH:
+			counts["duplicates"] += 1
+			continue
+		if m.get("media_id"):
+			media.queue_download(stored.name)
+		with locks.conversation(conversation.name):
+			conversation.reload()
+			_after_echo(conversation, m, sent_at, first_reply)
+		counts["stored"] += 1
+	return counts
+
+
+def _after_echo(conversation, m, sent_at, first_reply):
+	"""What a phone-app reply changes on the conversation: the last message (only if newer) and, on the first reply to a
+	customer message, a note and the end of any bot session. Nothing else."""
+	last = conversation.last_message_at
+	if not last or sent_at >= last:
+		frappe.db.set_value(
+			"Waba Conversation", conversation.name, {"last_message_at": sent_at, "last_message_preview": inbound.preview(m["body"])}, update_modified=False
+		)
+	if first_reply:
+		assignment.add_event(conversation.name, _("Answered from the phone app."))
+	try:
+		from waba import bot
+
+		bot.on_phone_reply(conversation)
+	except Exception:
+		frappe.log_error(title="Waba: stopping a bot after a phone-app reply failed")
+
+
+def _edit_echo(m):
+	"""A message edited or deleted in the phone app: change the stored copy. 1 when one was changed."""
+	name = frappe.db.get_value("Waba Message", {"message_id": m["original_id"]}, ["name", "body"], as_dict=True)
+	if not name:
+		return 0
+	body = coexistence.revoked_body(name.body) if m["action"] == "revoke" else m["body"]
+	frappe.db.set_value("Waba Message", name.name, {"body": body, "preview": inbound.preview(body)}, update_modified=False)
+	return 1
 
 
 def _keyword(conversation, body):
@@ -104,6 +190,26 @@ def _keyword(conversation, body):
 		parties.handle_keyword(conversation, body)
 	except Exception:
 		frappe.log_error(title="Waba: handling STOP / START failed")
+
+
+def _campaign_reply(conversation):
+	"""A customer who wrote back after a campaign message is counted as having replied. Never loses the stored message."""
+	try:
+		from waba import campaign_engine
+
+		campaign_engine.on_inbound(conversation)
+	except Exception:
+		frappe.log_error(title="Waba: attributing a reply to a campaign failed")
+
+
+def _bot(conversation, message):
+	"""Let a bot take this message if one should. It only decides and queues the work (nothing is sent here). Never loses the stored message."""
+	try:
+		from waba import bot
+
+		bot.on_inbound(conversation, message)
+	except Exception:
+		frappe.log_error(title="Waba: starting a bot failed")
 
 
 def _route(conversation, body):

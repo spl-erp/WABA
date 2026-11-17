@@ -60,6 +60,8 @@ def context_for(party_doctype, party, customer_label="", profile_name="", sender
 		name = " ".join(x for x in (record.get("first_name"), record.get("last_name")) if x)
 	if not name:
 		name = (profile_name or customer_label or "").split(" · ")[0].strip()
+		if sum(ch.isdigit() for ch in name) >= max(len(name) // 2, 1):
+			name = ""  # a phone number is not a name: never greet someone by it
 	return {
 		"record": record,
 		"sender": sender or frappe.utils.get_fullname(frappe.session.user),  # an automatic message has no person: the caller passes a label
@@ -68,10 +70,14 @@ def context_for(party_doctype, party, customer_label="", profile_name="", sender
 	}
 
 
-def prepare(tpl, party_doctype, party, customer_label="", profile_name="", typed=None, sender=None, reference=None):
-	"""(structure, values, missing slots, problems) for a template and what the person typed or chose."""
+def prepare(tpl, party_doctype, party, customer_label="", profile_name="", typed=None, sender=None, reference=None, rows_override=None):
+	"""(structure, values, missing slots, problems) for a template and what the person typed or chose.
+	`rows_override` (a campaign's own choices, keyed by slot) replaces the template's variable-map row for those slots."""
 	structure = structure_of(tpl)
-	filled, _missing = template_vars.resolve(map_rows(tpl), context_for(party_doctype, party, customer_label, profile_name, sender, reference))
+	rows = map_rows(tpl)
+	if rows_override:
+		rows = [r for r in rows if r["slot"] not in rows_override] + [{"slot": slot, "active": 1, **row} for slot, row in rows_override.items()]
+	filled, _missing = template_vars.resolve(rows, context_for(party_doctype, party, customer_label, profile_name, sender, reference))
 	values = template_vars.merge(filled, templates.typed_values(structure, typed))
 	problems = templates.validate(structure, values)
 	missing = [s for s in templates.slot_ids(structure) if not _has(values.get(s))]

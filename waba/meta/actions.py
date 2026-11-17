@@ -160,7 +160,7 @@ def sync_templates(account):
 		_sync_variable_rows(key, structure)
 
 	removed = 0
-	for name in frappe.get_all("Waba Template", filters={"account": doc.name, "status": ["!=", "DELETED"]}, pluck="name"):
+	for name in frappe.get_all("Waba Template", filters={"account": doc.name, "status": ["not in", ["DELETED", "DRAFT"]]}, pluck="name"):  # a draft was never at Meta
 		if name not in seen:
 			frappe.db.set_value("Waba Template", name, {"status": "DELETED", "last_synced": now_datetime()}, update_modified=False)
 			removed += 1

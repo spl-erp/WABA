@@ -18,14 +18,14 @@ PARENTS = {
 	"Export": "Common",
 }
 MEMBERS = [
-	("Common", "boss@x", "Lead"),
-	("Marketing", "mk.head@x", "Lead"),
+	("Common", "boss@x", "Team Lead"),
+	("Marketing", "mk.head@x", "Team Lead"),
 	("Marketing", "mk.agent@x", "Agent"),
-	("Sales Domestic", "dom.head@x", "Lead"),
-	("Domestic North", "north.lead@x", "Lead"),
+	("Sales Domestic", "dom.head@x", "Team Lead"),
+	("Domestic North", "north.lead@x", "Team Lead"),
 	("Domestic North", "north.a@x", "Agent"),
 	("Domestic South", "south.a@x", "Agent"),
-	("Sales Export", "exp.head@x", "Lead"),
+	("Sales Export", "exp.head@x", "Team Lead"),
 	("Sales Export", "exp.a@x", "Agent"),
 ]
 NUMBERS = {"Marketing": ["N-MK"], "Sales Domestic": ["N-DOM"], "Sales Export": ["N-EXP"], "Export": ["N-EXP2"]}
@@ -128,3 +128,113 @@ class TestOverseers(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestSharedNumbers(unittest.TestCase):
+	"""A number used by two departments: each head sees only their own people's chats, plus what nobody has yet."""
+
+	PARENTS = {"Common": None, "Sales": "Common", "Accounts": "Common", "Sales North": "Sales"}
+	MEMBERS = [
+		("Sales", "sales.head@x", "Team Lead"),
+		("Sales North", "north.a@x", "Agent"),
+		("Accounts", "acc.head@x", "Team Lead"),
+		("Accounts", "acc.a@x", "Agent"),
+	]
+	NUMBERS = {"Sales": ["N-SALES", "N-SUPPORT"], "Sales North": [], "Accounts": ["N-ACC", "N-SUPPORT"]}
+
+	def scope(self, user):
+		return v.visible_scope(user, parents=self.PARENTS, members=self.MEMBERS, team_numbers=self.NUMBERS)
+
+	def test_a_number_only_one_branch_uses_shows_everything_on_it(self):
+		s = self.scope("sales.head@x")
+		self.assertIn("N-SALES", s.exclusive_numbers)
+		self.assertTrue(v.can_see(s, "stranger@x", "N-SALES"))
+
+	def test_a_shared_number_shows_only_own_branch_and_unassigned(self):
+		s = self.scope("sales.head@x")
+		self.assertNotIn("N-SUPPORT", s.exclusive_numbers)
+		self.assertIn("N-SUPPORT", s.lead_numbers)
+		self.assertTrue(v.can_see(s, "north.a@x", "N-SUPPORT"))
+		self.assertFalse(v.can_see(s, "acc.a@x", "N-SUPPORT"))
+		self.assertTrue(v.can_see_unassigned(s, "N-SUPPORT"))
+
+	def test_the_other_head_sees_the_mirror_image(self):
+		s = self.scope("acc.head@x")
+		self.assertTrue(v.can_see(s, "acc.a@x", "N-SUPPORT"))
+		self.assertFalse(v.can_see(s, "north.a@x", "N-SUPPORT"))
+		self.assertFalse(v.can_see(s, "north.a@x", "N-SALES"))
+
+	def test_managing_follows_the_same_split(self):
+		s = self.scope("sales.head@x")
+		self.assertTrue(v.can_manage(s, "north.a@x", "N-SUPPORT"))
+		self.assertFalse(v.can_manage(s, "acc.a@x", "N-SUPPORT"))
+		self.assertTrue(v.can_manage(s, None, "N-SUPPORT"))
+		self.assertTrue(v.can_manage(s, "gone@x", "N-SALES"))
+		self.assertFalse(v.can_manage(s, None, "N-ACC"))
+
+	def test_an_agent_manages_only_their_own(self):
+		s = self.scope("north.a@x")
+		self.assertTrue(v.can_manage(s, "north.a@x", "N-SUPPORT"))
+		self.assertFalse(v.can_manage(s, "acc.a@x", "N-SUPPORT"))
+		self.assertFalse(v.can_manage(s, None, "N-SUPPORT"))
+
+	def test_admins_manage_everything(self):
+		self.assertTrue(v.can_manage(v.visible_scope("a@x", everyone=True), "x@x", "N-ACC"))
+
+	def test_live_updates_go_to_the_right_heads(self):
+		kw = dict(parents=self.PARENTS, members=self.MEMBERS, team_numbers=self.NUMBERS)
+		self.assertEqual(v.overseers("north.a@x", "N-SUPPORT", **kw), {"sales.head@x"})
+		self.assertEqual(v.overseers(None, "N-SUPPORT", **kw), {"sales.head@x", "acc.head@x"})
+		self.assertEqual(v.overseers("x@x", "N-ACC", **kw), {"acc.head@x"})
+
+
+class TestUnassignedOnSharedNumbers(unittest.TestCase):
+	def test_a_lead_can_open_what_nobody_has_yet_on_a_shared_number(self):
+		parents = {"Common": None, "Sales": "Common", "Accounts": "Common"}
+		members = [("Sales", "sales.head@x", "Team Lead"), ("Accounts", "acc.head@x", "Team Lead"), ("Accounts", "acc.a@x", "Agent")]
+		numbers = {"Sales": ["N-SUP"], "Accounts": ["N-SUP"]}
+		for lead in ("sales.head@x", "acc.head@x"):
+			s = v.visible_scope(lead, parents=parents, members=members, team_numbers=numbers)
+			self.assertTrue(v.can_see(s, None, "N-SUP"), lead)
+			self.assertTrue(v.can_see(s, "", "N-SUP"), lead)
+		agent = v.visible_scope("acc.a@x", parents=parents, members=members, team_numbers=numbers)
+		self.assertFalse(v.can_see(agent, None, "N-SUP"))
+		stranger = v.visible_scope("x@x", parents=parents, members=members, team_numbers=numbers)
+		self.assertFalse(v.can_see(stranger, None, "N-SUP"))
+
+
+class TestVisibleNumbers(unittest.TestCase):
+	"""Which business numbers a person sees in the inbox's picker and the Desk list."""
+
+	ALL = ["N1", "N2", "N3"]
+
+	def scope(self, **kw):
+		from waba.rules import visibility as v
+
+		return v.Scope(me="u", **kw)
+
+	def test_admin_sees_every_number(self):
+		from waba.rules import visibility as v
+
+		self.assertEqual(v.visible_numbers(self.scope(everything=True), [], self.ALL), self.ALL)
+
+	def test_an_agent_sees_only_the_number_they_work(self):
+		from waba.rules import visibility as v
+
+		self.assertEqual(v.visible_numbers(self.scope(), ["N2"], self.ALL), ["N2"])
+
+	def test_a_lead_sees_the_numbers_their_team_owns(self):
+		from waba.rules import visibility as v
+
+		self.assertEqual(v.visible_numbers(self.scope(lead_numbers=frozenset({"N1"}), numbers=frozenset({"N1"})), [], self.ALL), ["N1"])
+
+	def test_agent_and_lead_numbers_are_combined(self):
+		from waba.rules import visibility as v
+
+		self.assertEqual(v.visible_numbers(self.scope(lead_numbers=frozenset({"N3"})), ["N1"], self.ALL), ["N1", "N3"])
+
+	def test_nobody_sees_nothing_and_unknown_numbers_are_dropped(self):
+		from waba.rules import visibility as v
+
+		self.assertEqual(v.visible_numbers(self.scope(), [], self.ALL), [])
+		self.assertEqual(v.visible_numbers(self.scope(), ["GONE"], self.ALL), [])

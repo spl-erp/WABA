@@ -203,7 +203,7 @@ class TestAutomaticSendSeam(unittest.TestCase):
 		text = ast.get_source_segment(self.src, node)
 		self.assertIn("AUTOMATIC_ORIGINS", text)
 		self.assertIn("person=False", text)
-		self.assertIn("AUTOMATIC_ORIGINS = (purposes.NOTIFICATION, purposes.REMINDER, purposes.SYSTEM)", self.src)
+		self.assertIn("AUTOMATIC_ORIGINS = (purposes.NOTIFICATION, purposes.REMINDER, purposes.SYSTEM, purposes.CAMPAIGN, purposes.AUTO_REPLY)", self.src)
 
 	def test_the_person_bound_parts_are_the_only_ones_replaced(self):
 		import ast

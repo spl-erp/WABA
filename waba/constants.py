@@ -6,6 +6,7 @@ WEBHOOK_PATH = "/api/method/waba.api.webhook.receive"
 ROLE_ADMIN = "Waba Admin"
 ROLE_SUPERVISOR = "Waba Supervisor"
 ROLE_AGENT = "Waba Agent"
+ROLE_CAMPAIGN = "Waba Campaign Manager"  # may build Sets and run campaigns; given by a Waba Admin
 
 NUMBER_TYPE_SHARED = "Shared"
 NUMBER_TYPE_PERSONAL = "Personal"

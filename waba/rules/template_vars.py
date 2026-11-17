@@ -62,11 +62,46 @@ def resolve(rows, context):
 			value = (context.get("customer_name") or "").strip() or None
 		elif kind == SHARED:
 			value = {"shared_file": source} if source else None
+		if value is None and kind in (RECORD, CUSTOMER) and str(row.get("fallback") or "").strip():
+			value = str(row["fallback"]).strip()  # a campaign gives each per-person value a stand-in for a record that has none
 		if value is None:
 			missing.append(row["slot"])
 		else:
 			values[row["slot"]] = value
 	return values, missing
+
+
+PER_PERSON = (RECORD, CUSTOMER)
+_SENDER_WORDS = ("agent", "sender", "executive", "representative", "rep ", "advisor", "our name", "your name", "from ")
+
+
+def guess_source(label, example=""):
+	"""Where a campaign should take a value from, judged from its label: (source_type, fallback). A name-like label is the
+	customer's name; an agent/sender label is the sender; a date label is today; anything else is the same text for everyone."""
+	text = f"{label or ''} {example or ''}".lower().strip()
+	if any(w in text for w in _SENDER_WORDS):
+		return SENDER, ""
+	if "date" in text or "today" in text:
+		return TODAY, ""
+	if "name" in text or "customer" in text or "client" in text:
+		return CUSTOMER, "Sir/Madam"
+	return LITERAL, ""
+
+
+def row_problem(row):
+	"""Plain-words reason a campaign value choice cannot be used, or None. `row`: source_type, source, fallback."""
+	kind = row.get("source_type")
+	if kind not in (RECORD, LITERAL, SENDER, TODAY, CUSTOMER, SHARED):
+		return "Choose where this value comes from."
+	if kind == LITERAL and not str(row.get("source") or "").strip():
+		return "Type the text that goes to everyone."
+	if kind == RECORD and not str(row.get("source") or "").strip():
+		return "Choose which field of the person's record to use."
+	if kind == SHARED and not str(row.get("source") or "").strip():
+		return "Choose the header file from the shared library."
+	if kind in PER_PERSON and not str(row.get("fallback") or "").strip():
+		return "Type what to use when a person's record has no value (for example Sir/Madam)."
+	return None
 
 
 def merge(prefilled, typed):

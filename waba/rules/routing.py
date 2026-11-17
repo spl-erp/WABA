@@ -93,6 +93,19 @@ def _steps(ctx):
 	return [r.rule_type for r in ctx.rules if r.enabled and r.rule_type in _HANDLERS]
 
 
+def keep_with_current(current_assignee, assignee_valid, auto_reassign_away):
+	"""True when a conversation must stay with its present agent. While automatic re-assignment is switched off (Waba Settings),
+	a chat stays with its agent even if they are Away. A broken assignment (the person is disabled or no longer works the
+	number) is not "Away" and is still moved."""
+	return bool(current_assignee) and bool(assignee_valid) and not auto_reassign_away
+
+
+def needs_lead(current_assignee, assignee_valid, auto_assign_new):
+	"""True when a chat must wait for a Team Lead to assign it: automatic assignment of new chats is switched off (Waba Settings) and the
+	chat has nobody who can take it (no assignee, or one who is disabled or no longer works the number)."""
+	return not auto_assign_new and not (bool(current_assignee) and bool(assignee_valid))
+
+
 def _has_capacity(agent, default_max_open):
 	limit = agent.max_open or default_max_open
 	return limit <= 0 or agent.open_count < limit

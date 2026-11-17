@@ -1,0 +1,438 @@
+{
+ "actions": [],
+ "autoname": "format:WCAMP-{#####}",
+ "creation": "2026-11-05 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "status",
+  "cb1",
+  "recipient_set",
+  "party_doctype",
+  "people",
+  "msg_section",
+  "waba_number",
+  "template",
+  "template_category",
+  "cb2",
+  "template_values",
+  "values_summary",
+  "sched_section",
+  "schedule_mode",
+  "start_at",
+  "recurrence",
+  "cb3",
+  "ends_on",
+  "max_runs",
+  "next_run_on",
+  "runs_done",
+  "speed_section",
+  "speed_per_minute",
+  "hours_start",
+  "cb4",
+  "hours_end",
+  "test_section",
+  "test_numbers",
+  "estimate_text",
+  "approval_section",
+  "approved_by",
+  "rejected_reason",
+  "progress_section",
+  "stats_html",
+  "pause_reason",
+  "backoff_until",
+  "cb5",
+  "started_on",
+  "finished_on",
+  "counts_section",
+  "c_total",
+  "c_pending",
+  "c_attempted",
+  "c_sent",
+  "cb6",
+  "c_delivered",
+  "c_read",
+  "c_replied",
+  "c_limited",
+  "cb7",
+  "c_failed",
+  "c_skipped"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Campaign name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPending approval\nScheduled\nRunning\nPaused\nDone\nCancelled\nRejected",
+   "default": "Draft",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cb1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "recipient_set",
+   "fieldtype": "Link",
+   "label": "Set",
+   "options": "Waba Recipient Set",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "The locked list of people this campaign goes to.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party_doctype",
+   "fieldtype": "Data",
+   "label": "Made from",
+   "read_only": 1,
+   "fetch_from": "recipient_set.party_doctype"
+  },
+  {
+   "fieldname": "people",
+   "fieldtype": "Int",
+   "label": "People in the Set",
+   "read_only": 1,
+   "fetch_from": "recipient_set.included_count"
+  },
+  {
+   "fieldname": "msg_section",
+   "fieldtype": "Section Break",
+   "label": "Message"
+  },
+  {
+   "fieldname": "waba_number",
+   "fieldtype": "Link",
+   "label": "Send from number",
+   "options": "Waba Number",
+   "description": "Chosen with the Choose message button. Only numbers with the Campaigns purpose switched on.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "template",
+   "fieldtype": "Link",
+   "label": "Template",
+   "options": "Waba Template",
+   "description": "Chosen with the Choose message button.",
+   "read_only": 1
+  },
+  {
+   "fieldname": "template_category",
+   "fieldtype": "Data",
+   "label": "Category",
+   "read_only": 1,
+   "fetch_from": "template.category"
+  },
+  {
+   "fieldname": "cb2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "template_values",
+   "fieldtype": "Long Text",
+   "label": "Template values (data)",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "values_summary",
+   "fieldtype": "Small Text",
+   "label": "Values chosen",
+   "read_only": 1,
+   "description": "Use the Message values button to fill the template's values. The same values go to everyone; anything taken from the person's record is filled in for each person."
+  },
+  {
+   "fieldname": "sched_section",
+   "fieldtype": "Section Break",
+   "label": "Schedule"
+  },
+  {
+   "fieldname": "schedule_mode",
+   "fieldtype": "Select",
+   "label": "When",
+   "options": "Now\nLater\nRecurring",
+   "default": "Now",
+   "reqd": 1
+  },
+  {
+   "fieldname": "start_at",
+   "fieldtype": "Datetime",
+   "label": "Start at",
+   "depends_on": "eval:doc.schedule_mode!='Now'",
+   "description": "Sending happens only within the allowed hours."
+  },
+  {
+   "fieldname": "recurrence",
+   "fieldtype": "Select",
+   "label": "Repeat",
+   "options": "\nDaily\nWeekly\nMonthly",
+   "depends_on": "eval:doc.schedule_mode=='Recurring'"
+  },
+  {
+   "fieldname": "cb3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "ends_on",
+   "fieldtype": "Date",
+   "label": "Last run on",
+   "depends_on": "eval:doc.schedule_mode=='Recurring'"
+  },
+  {
+   "fieldname": "max_runs",
+   "fieldtype": "Int",
+   "label": "Or stop after this many runs",
+   "depends_on": "eval:doc.schedule_mode=='Recurring'"
+  },
+  {
+   "fieldname": "next_run_on",
+   "fieldtype": "Date",
+   "label": "Next run on",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "runs_done",
+   "fieldtype": "Int",
+   "label": "Runs done",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "speed_section",
+   "fieldtype": "Section Break",
+   "label": "Speed and hours",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "speed_per_minute",
+   "fieldtype": "Int",
+   "label": "Messages per minute",
+   "description": "Blank uses the default in Waba Settings."
+  },
+  {
+   "fieldname": "hours_start",
+   "fieldtype": "Int",
+   "label": "Send from hour (0-23)",
+   "description": "Blank uses Waba Settings (9)."
+  },
+  {
+   "fieldname": "cb4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "hours_end",
+   "fieldtype": "Int",
+   "label": "Send until hour (0-23)",
+   "description": "Blank uses Waba Settings (20)."
+  },
+  {
+   "fieldname": "test_section",
+   "fieldtype": "Section Break",
+   "label": "Test and review"
+  },
+  {
+   "fieldname": "test_numbers",
+   "fieldtype": "Small Text",
+   "label": "Extra test numbers",
+   "description": "One per line. Send test goes to your own number and these; nobody else."
+  },
+  {
+   "fieldname": "estimate_text",
+   "fieldtype": "Small Text",
+   "label": "Review",
+   "read_only": 1,
+   "description": "People, estimated cost and when it will finish. Filled in by Review."
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval",
+   "collapsible": 1,
+   "depends_on": "eval:doc.approved_by||doc.rejected_reason"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved by",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "rejected_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejected because",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "progress_section",
+   "fieldtype": "Section Break",
+   "label": "Progress"
+  },
+  {
+   "fieldname": "stats_html",
+   "fieldtype": "HTML",
+   "label": "Progress"
+  },
+  {
+   "fieldname": "pause_reason",
+   "fieldtype": "Small Text",
+   "label": "Why it is paused or stopped",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "backoff_until",
+   "fieldtype": "Datetime",
+   "label": "Waiting until (Meta asked us to slow down)",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cb5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "started_on",
+   "fieldtype": "Datetime",
+   "label": "Started",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "finished_on",
+   "fieldtype": "Datetime",
+   "label": "Finished",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "counts_section",
+   "fieldtype": "Section Break",
+   "label": "Totals",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "c_total",
+   "fieldtype": "Int",
+   "label": "Messages planned",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_pending",
+   "fieldtype": "Int",
+   "label": "Waiting",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_attempted",
+   "fieldtype": "Int",
+   "label": "Attempted",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_sent",
+   "fieldtype": "Int",
+   "label": "Sent",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cb6",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "c_delivered",
+   "fieldtype": "Int",
+   "label": "Delivered",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_read",
+   "fieldtype": "Int",
+   "label": "Read",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_replied",
+   "fieldtype": "Int",
+   "label": "Replied",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_limited",
+   "fieldtype": "Int",
+   "label": "Limited by Meta",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cb7",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "c_failed",
+   "fieldtype": "Int",
+   "label": "Other failures",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "c_skipped",
+   "fieldtype": "Int",
+   "label": "Skipped",
+   "read_only": 1,
+   "no_copy": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-05 14:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Campaign",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Waba Campaign Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "title"
+}

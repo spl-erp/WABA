@@ -15,6 +15,7 @@
   "assigned_reason",
   "assigned_trail",
   "waiting_since",
+  "held",
   "alerted_at",
   "unread_count",
   "opted_out",
@@ -33,7 +34,8 @@
   "last_message_at",
   "last_message_preview",
   "technical_section",
-  "conversation_key"
+  "conversation_key",
+  "last_campaign"
  ],
  "fields": [
   {
@@ -121,6 +123,14 @@
    "label": "Waiting For Someone Since",
    "read_only": 1,
    "description": "Set while nobody is assigned."
+  },
+  {
+   "fieldname": "held",
+   "fieldtype": "Check",
+   "label": "Held for a Team Lead",
+   "default": "0",
+   "read_only": 1,
+   "description": "Returned to the waiting list on purpose: routing leaves it alone until a Team Lead assigns it."
   },
   {
    "fieldname": "alerted_at",
@@ -239,6 +249,13 @@
    "read_only": 1,
    "description": "Business number and customer. One conversation per pair.",
    "reqd": 1
+  },
+  {
+   "fieldname": "last_campaign",
+   "fieldtype": "Link",
+   "label": "Last campaign",
+   "options": "Waba Campaign",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -248,7 +265,7 @@
    "link_fieldname": "conversation"
   }
  ],
- "modified": "2026-10-30 18:00:00.000000",
+ "modified": "2026-11-05 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Conversation",

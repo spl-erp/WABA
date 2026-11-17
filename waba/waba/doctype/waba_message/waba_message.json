@@ -52,7 +52,10 @@
   "column_break_ms4",
   "interactive_id",
   "customer_reaction",
-  "our_reaction"
+  "our_reaction",
+  "campaign",
+  "campaign_recipient",
+  "bot"
  ],
  "fields": [
   {
@@ -371,11 +374,34 @@
    "fieldtype": "Data",
    "label": "Our Reaction",
    "read_only": 1
+  },
+  {
+   "fieldname": "campaign",
+   "fieldtype": "Link",
+   "label": "Campaign",
+   "options": "Waba Campaign",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "campaign_recipient",
+   "fieldtype": "Link",
+   "label": "Campaign recipient",
+   "options": "Waba Campaign Recipient",
+   "read_only": 1
+  },
+  {
+   "fieldname": "bot",
+   "fieldtype": "Link",
+   "label": "Bot",
+   "options": "Waba Bot",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-02 12:00:00.000000",
+ "modified": "2026-11-06 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Message",

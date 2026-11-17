@@ -22,9 +22,11 @@ EXPECTED = {
 	"Waba Portfolio", "Waba Meta App", "Waba Account", "Waba Number", "Waba Agent Access", "Waba Routing Rule", "Waba Webhook Event",
 	"Waba Identity", "Waba Conversation", "Waba Message", "Waba Template",
 	"Waba Team", "Waba Team Number", "Waba Team Member", "Waba Note", "Waba Quick Reply", "Waba Shared File", "Waba Template Variable",
-	"Waba Settings", "Waba Notification Rule", "Waba Notification Log", "Waba Reminder",
+	"Waba Settings", "Waba Notification Rule", "Waba Notification Log", "Waba Reminder", "Waba Template Button", "Waba Privacy Log",
+	"Waba Recipient Set", "Waba Recipient Set Member", "Waba Campaign", "Waba Campaign Recipient",
+	"Waba Bot", "Waba Bot Session", "Waba Bot Log",
 }
-CHILD_TABLES = ("Waba Agent Access", "Waba Routing Rule", "Waba Team Number", "Waba Team Member", "Waba Template Variable")
+CHILD_TABLES = ("Waba Agent Access", "Waba Routing Rule", "Waba Team Number", "Waba Team Member", "Waba Template Variable", "Waba Template Button")
 SECRET_FIELDS = {"Waba Portfolio": {"access_token"}, "Waba Meta App": {"app_secret", "verify_token"}}
 
 
@@ -138,10 +140,15 @@ class TestTeamwork(unittest.TestCase):
 		perms = {p["role"]: p for p in DOCTYPES["Waba Conversation"][1]["permissions"]}
 		self.assertEqual(perms["Waba Agent"], {"role": "Waba Agent", "read": 1})  # read only; the hooks narrow it to their own
 
-	def test_agents_cannot_write_team_configuration(self):
+	def test_only_leads_and_admins_write_teams_and_never_create_or_delete(self):
 		for p in DOCTYPES["Waba Team"][1]["permissions"]:
-			if p["role"] in ("Waba Agent", "Waba Supervisor"):
+			if p["role"] == "Waba Agent":
 				self.assertEqual(p.get("write", 0), 0)
+			if p["role"] == "Waba Supervisor":
+				# the Desk grants write; waba.teams.has_team_permission narrows it to the teams that person leads
+				self.assertEqual((p.get("create", 0), p.get("delete", 0)), (0, 0))
+		hooks = open(os.path.join(os.path.dirname(__file__), "..", "hooks.py")).read()
+		self.assertIn('"Waba Team": "waba.teams.has_team_permission"', hooks)
 
 	def test_quick_reply_scopes(self):
 		self.assertEqual(fields_of("Waba Quick Reply")["scope"]["options"], "Everyone\nTeam\nMe")

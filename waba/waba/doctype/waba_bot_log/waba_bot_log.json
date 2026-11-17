@@ -1,0 +1,106 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-11-06 14:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "session",
+  "bot",
+  "conversation",
+  "message",
+  "cb",
+  "node_id",
+  "node_type",
+  "result",
+  "customer_input"
+ ],
+ "fields": [
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "label": "Session",
+   "options": "Waba Bot Session",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "bot",
+   "fieldtype": "Link",
+   "label": "Bot",
+   "options": "Waba Bot",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "Waba Conversation",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "message",
+   "fieldtype": "Data",
+   "label": "Customer message",
+   "read_only": 1,
+   "search_index": 1,
+   "description": "The Waba Message this step answered; a step is never run twice for one message."
+  },
+  {
+   "fieldname": "cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "node_id",
+   "fieldtype": "Data",
+   "label": "Block",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "node_type",
+   "fieldtype": "Data",
+   "label": "Kind of block",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "result",
+   "fieldtype": "Small Text",
+   "label": "What happened",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "customer_input",
+   "fieldtype": "Small Text",
+   "label": "What the customer wrote",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-06 14:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Bot Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "naming_rule": "Random"
+}

@@ -22,6 +22,12 @@ def _conversation_condition(scope):
 		parts.append("`tabWaba Conversation`.`assigned_to` in ({})".format(", ".join(escape(u) for u in sorted(scope.users))))
 	if scope.numbers:
 		parts.append("`tabWaba Conversation`.`waba_number` in ({})".format(", ".join(escape(n) for n in sorted(scope.numbers))))
+	if scope.lead_numbers:  # nobody has it yet: the Team Leads over the number see it
+		parts.append(
+			"(ifnull(`tabWaba Conversation`.`assigned_to`, '') = '' and `tabWaba Conversation`.`waba_number` in ({}))".format(
+				", ".join(escape(n) for n in sorted(scope.lead_numbers))
+			)
+		)
 	return "(" + " or ".join(parts) + ")" if parts else NOTHING
 
 
@@ -80,3 +86,86 @@ def quick_reply_query_conditions(user=None):
 			"(`tabWaba Quick Reply`.`scope` = 'Team' and `tabWaba Quick Reply`.`team` in ({}))".format(", ".join(escape(t) for t in team_ids))
 		)
 	return "(" + " or ".join(mine) + ")"
+
+
+def _set_condition(user):
+	"""A Set (and its people) belongs to whoever made it; Waba Admins see them all."""
+	user = user or frappe.session.user
+	if teams.is_admin(user):
+		return ""
+	return f"`tabWaba Recipient Set`.`owner` = {frappe.db.escape(user)}"
+
+
+def recipient_set_query_conditions(user=None):
+	return _set_condition(user)
+
+
+def recipient_set_has_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	return teams.is_admin(user) or doc.get("owner") == user
+
+
+def recipient_set_member_query_conditions(user=None):
+	user = user or frappe.session.user
+	if teams.is_admin(user):
+		return ""
+	return (
+		"`tabWaba Recipient Set Member`.`recipient_set` in "
+		f"(select `name` from `tabWaba Recipient Set` where `owner` = {frappe.db.escape(user)})"
+	)
+
+
+def recipient_set_member_has_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	if teams.is_admin(user):
+		return True
+	return bool(doc.get("recipient_set")) and frappe.db.get_value("Waba Recipient Set", doc.recipient_set, "owner") == user
+
+
+def _campaign_condition(table, user, column):
+	user = user or frappe.session.user
+	if teams.is_admin(user):
+		return ""
+	return f"`tab{table}`.`{column}` = {frappe.db.escape(user)}"
+
+
+def campaign_query_conditions(user=None):
+	"""A campaign belongs to whoever made it; Waba Admins see them all."""
+	return _campaign_condition("Waba Campaign", user, "owner")
+
+
+def campaign_has_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	return teams.is_admin(user) or doc.get("owner") == user
+
+
+def campaign_recipient_query_conditions(user=None):
+	user = user or frappe.session.user
+	if teams.is_admin(user):
+		return ""
+	return (
+		"`tabWaba Campaign Recipient`.`campaign` in "
+		f"(select `name` from `tabWaba Campaign` where `owner` = {frappe.db.escape(user)})"
+	)
+
+
+def campaign_recipient_has_permission(doc, user=None, permission_type=None):
+	user = user or frappe.session.user
+	if teams.is_admin(user):
+		return True
+	return bool(doc.get("campaign")) and frappe.db.get_value("Waba Campaign", doc.campaign, "owner") == user
+
+
+def number_query_conditions(user=None):
+	"""A person sees the Waba Numbers they work or oversee; administrators and System Managers see all."""
+	names = teams.number_names(user or frappe.session.user)
+	if names is None:
+		return ""
+	if not names:
+		return NOTHING
+	return "`tabWaba Number`.`name` in ({})".format(", ".join(frappe.db.escape(n) for n in sorted(names)))
+
+
+def number_has_permission(doc, user=None, permission_type=None):
+	names = teams.number_names(user or frappe.session.user)
+	return names is None or doc.get("name") in names

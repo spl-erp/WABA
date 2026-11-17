@@ -70,3 +70,17 @@ def from_typed(raw, default_country_code=DEFAULT_COUNTRY_CODE):
 	if cc == "91" and national[0] not in "6789":
 		return None
 	return e164("+" + cc + national)
+
+
+def is_mobile_like(key):
+	"""False for a number that cannot be a WhatsApp customer: an Indian (+91) number whose ten digits do not start with 6 to 9
+	(a landline, or a number with an STD code). Frappe's Phone fields always carry the country code, so from_typed trusts them
+	as written; a campaign must not send to a landline, where it would only fail. Other countries are not judged."""
+	if not key:
+		return False
+	digits = str(key).lstrip("+")
+	if digits.startswith("91"):
+		national = digits[2:]
+		return len(national) == 10 and national[0] in "6789"
+	return True
+

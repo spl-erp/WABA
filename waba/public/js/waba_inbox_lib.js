@@ -44,6 +44,7 @@
 		upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
 		pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
 		contact: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+		compose: '<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
 		folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
 	};
 
@@ -99,6 +100,17 @@
 	}
 
 	/** {name, sub}: the first line and the second line of a customer in a list or header. */
+	const ORIGIN_LABELS = { Notification: "Notification", Reminder: "Reminder", Campaign: "Campaign", "Auto-reply": "Auto-reply", "Phone app": "Sent from the phone app", System: "System" };
+
+	/** The tiny "who sent this" text under an outgoing message: the person, or where an automatic message came from. */
+	function senderLabel(m) {
+		if (!m || m.direction !== "Out") return "";
+		const name = String(m.sent_by_name || m.sent_by || "").trim();
+		if (name) return name;
+		if (m.origin === "Auto-reply" && m.bot) return `Auto-reply \u00b7 ${m.bot}`;
+		return ORIGIN_LABELS[m.origin] || "Sent";
+	}
+
 	function customerLines(row) {
 		const phone = row.customer_phone || "";
 		const bsuid = row.customer_bsuid || "";
@@ -388,5 +400,5 @@
 			.join("");
 	}
 
-	return { MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, fillTemplate, missingSlots, reminderChoices, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
+	return { senderLabel, MEDIA_KINDS, UPLOAD_LIMITS, humanSize, checkUpload, mediaView, placeFor, contactsFor, reactionsFor, canRetry, firstUnread, fillTemplate, missingSlots, reminderChoices, waFormat, timeline, filterQuickReplies, linkify, highlight, countMatches, emojiSearch, EMOJI_GROUPS, icon, brandMark, verifiedBadge, escapeHtml, initials, avatarColor, customerLines, timeLeft, tickFor, kindNote, dayLabel, clockLabel, AVATAR_COLORS };
 });

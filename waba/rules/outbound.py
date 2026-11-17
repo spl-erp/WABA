@@ -127,6 +127,152 @@ def template_components_payload(to_phone, name, language, components):
 	return payload
 
 
+# Meta's limits for an interactive message (reply buttons and a list), checked here so a bot is told at Publish, not at send time
+MAX_BUTTONS = 3
+MAX_BUTTON_TITLE = 20
+MAX_INTERACTIVE_BODY = 1024
+MAX_LIST_ROWS = 10
+MAX_LIST_BUTTON = 20
+MAX_ROW_TITLE = 24
+MAX_ROW_DESCRIPTION = 72
+MAX_REPLY_ID = 200
+
+
+def check_buttons(body, buttons):
+	"""A list of problems with a reply-button message (empty = fine). `buttons` is [{"id", "title"}]."""
+	problems = []
+	text = (body or "").strip()
+	if not text:
+		problems.append("The message text is empty.")
+	elif len(text) > MAX_INTERACTIVE_BODY:
+		problems.append(f"The message text can have at most {MAX_INTERACTIVE_BODY} characters.")
+	buttons = list(buttons or [])
+	if not 1 <= len(buttons) <= MAX_BUTTONS:
+		problems.append(f"Use 1 to {MAX_BUTTONS} buttons (WhatsApp allows no more); use a list for more choices.")
+	problems += _check_options(buttons, "button", MAX_BUTTON_TITLE)
+	return problems
+
+
+def check_list(body, button_text, rows):
+	"""A list of problems with a list message (empty = fine). `rows` is [{"id", "title", "description"?}]."""
+	problems = []
+	text = (body or "").strip()
+	if not text:
+		problems.append("The message text is empty.")
+	elif len(text) > MAX_INTERACTIVE_BODY:
+		problems.append(f"The message text can have at most {MAX_INTERACTIVE_BODY} characters.")
+	label = (button_text or "").strip()
+	if not label:
+		problems.append("The list button has no text.")
+	elif len(label) > MAX_LIST_BUTTON:
+		problems.append(f"The list button text can have at most {MAX_LIST_BUTTON} characters.")
+	rows = list(rows or [])
+	if not 1 <= len(rows) <= MAX_LIST_ROWS:
+		problems.append(f"A list needs 1 to {MAX_LIST_ROWS} choices.")
+	problems += _check_options(rows, "choice", MAX_ROW_TITLE)
+	for row in rows:
+		if len((row.get("description") or "").strip()) > MAX_ROW_DESCRIPTION:
+			problems.append(f"The description of '{row.get('title')}' can have at most {MAX_ROW_DESCRIPTION} characters.")
+	return problems
+
+
+def _check_options(options, noun, max_title):
+	problems, seen_ids, seen_titles = [], set(), set()
+	for option in options:
+		title = (option.get("title") or "").strip()
+		oid = str(option.get("id") or "").strip()
+		if not title:
+			problems.append(f"A {noun} has no title.")
+		elif len(title) > max_title:
+			problems.append(f"The {noun} '{title}' is longer than {max_title} characters.")
+		if title and title.casefold() in seen_titles:
+			problems.append(f"Two {noun}s are called '{title}'.")
+		seen_titles.add(title.casefold())
+		if not oid or len(oid) > MAX_REPLY_ID:
+			problems.append(f"The {noun} '{title}' needs an id of 1 to {MAX_REPLY_ID} characters.")
+		elif oid in seen_ids:
+			problems.append(f"Two {noun}s share the id '{oid}'.")
+		seen_ids.add(oid)
+	return problems
+
+
+MAX_CTA_BUTTON = 20
+MAX_CTA_URL = 2000
+_CTA_URL = re.compile(r"https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}(:\d+)?(/\S*)?")
+
+
+def check_cta_url(url):
+	"""Problems with a link-button address (empty = fine): https only, a real host, no spaces, at most 2000 characters."""
+	url = str(url or "").strip()
+	if not url:
+		return ["The link has no address."]
+	if len(url) > MAX_CTA_URL:
+		return [f"The link can have at most {MAX_CTA_URL} characters."]
+	if not _CTA_URL.fullmatch(url):
+		return ["The link must start with https:// and be a complete web address without spaces."]
+	return []
+
+
+def check_cta(body, button_text, url):
+	"""A list of problems with a link-button message (empty = fine)."""
+	problems = []
+	text = (body or "").strip()
+	if not text:
+		problems.append("The message text is empty.")
+	elif len(text) > MAX_INTERACTIVE_BODY:
+		problems.append(f"The message text can have at most {MAX_INTERACTIVE_BODY} characters.")
+	label = (button_text or "").strip()
+	if not label:
+		problems.append("The button has no text.")
+	elif len(label) > MAX_CTA_BUTTON:
+		problems.append(f"The button text can have at most {MAX_CTA_BUTTON} characters.")
+	return problems + check_cta_url(url)
+
+
+def cta_payload(to_phone, body, button_text, url):
+	"""A message with one button that opens a web address."""
+	return _interactive(
+		to_phone,
+		{"type": "cta_url", "body": {"text": body.strip()}, "action": {"name": "cta_url", "parameters": {"display_text": button_text.strip(), "url": url.strip()}}},
+	)
+
+
+def _interactive(to_phone, interactive):
+	return {
+		"messaging_product": "whatsapp",
+		"recipient_type": "individual",
+		"to": wa_digits(to_phone),
+		"type": "interactive",
+		"interactive": interactive,
+	}
+
+
+def buttons_payload(to_phone, body, buttons):
+	"""Up to three quick-reply buttons under a message. A tap comes back as an interactive button_reply carrying the id."""
+	return _interactive(
+		to_phone,
+		{
+			"type": "button",
+			"body": {"text": body.strip()},
+			"action": {"buttons": [{"type": "reply", "reply": {"id": str(b["id"]), "title": b["title"].strip()}} for b in buttons]},
+		},
+	)
+
+
+def list_payload(to_phone, body, button_text, rows):
+	"""A list of up to ten choices behind one button. A pick comes back as an interactive list_reply carrying the id."""
+	built = []
+	for row in rows:
+		item = {"id": str(row["id"]), "title": row["title"].strip()}
+		if (row.get("description") or "").strip():
+			item["description"] = row["description"].strip()
+		built.append(item)
+	return _interactive(
+		to_phone,
+		{"type": "list", "body": {"text": body.strip()}, "action": {"button": button_text.strip(), "sections": [{"title": "Options", "rows": built}]}},
+	)
+
+
 def media_payload(to_phone, kind, media_id, caption="", filename="", reply_to_message_id=None):
 	"""A media message that refers to a file already uploaded to Meta (by id, never by public link)."""
 	body = {"id": media_id}

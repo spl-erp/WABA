@@ -33,6 +33,14 @@ class WabaNumber(Document):
 		if self.number_type != NUMBER_TYPE_PERSONAL:
 			self.owner_user = None
 
+		from waba import teams
+
+		if not self.is_new() and teams.managed() and frappe.db.exists("Waba Number", self.name) and self.name in teams.used_numbers():
+			# the teams run this list: whatever was typed here is replaced by what the teams say
+			self.set("agents", [])
+			for row in teams.derived_agents(self.name):
+				self.append("agents", row)
+
 		errors = [
 			*cv.validate_number(self.number_type, self.sticky_days, self.default_max_open),
 			*cv.validate_hours(
@@ -48,7 +56,9 @@ class WabaNumber(Document):
 			row.role == "Supervisor" for row in self.agents
 		):
 			frappe.msgprint(
-				_("A shared number should have at least one supervisor, who receives unassigned conversations."),
+				_("Nobody leads the teams that use this number, so nobody receives its unassigned conversations. Add a Team Lead to the team.")
+				if teams.managed()
+				else _("A shared number should have at least one supervisor, who receives unassigned conversations."),
 				indicator="orange",
 				alert=True,
 			)

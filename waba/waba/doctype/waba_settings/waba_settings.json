@@ -4,25 +4,314 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
+  "one_to_one_section",
+  "allow_marketing_templates",
   "notifications_section",
   "notifications_enabled",
   "max_sends_per_hour",
   "sender_label",
   "test_section",
-  "test_phones"
+  "test_phones",
+  "teams_section",
+  "teams_manage_agents",
+  "privacy_section",
+  "privacy_disabled",
+  "privacy_skip_aadhaar",
+  "privacy_skip_pan",
+  "privacy_skip_card",
+  "privacy_column",
+  "privacy_skip_bank",
+  "privacy_skip_upi",
+  "privacy_skip_otp",
+  "privacy_allow_list",
+  "campaigns_section",
+  "campaign_audience_rule",
+  "campaign_cb",
+  "campaigns_need_approval",
+  "campaign_hours_start",
+  "campaign_hours_end",
+  "campaign_speed",
+  "campaign_failure_streak",
+  "campaign_reserved_percent",
+  "campaign_reply_days",
+  "campaign_rates_section",
+  "rate_marketing",
+  "rate_utility",
+  "cb_rates",
+  "gst_percent",
+  "assignment_section",
+  "auto_assign_new_chats",
+  "auto_reassign_away",
+  "bots_section",
+  "bots_enabled",
+  "bot_extra_blocks",
+  "mobile_section",
+  "mobile_inbox_enabled"
  ],
  "fields": [
-  {"fieldname": "notifications_section", "fieldtype": "Section Break", "label": "Automatic WhatsApp messages"},
-  {"fieldname": "notifications_enabled", "fieldtype": "Check", "label": "Send notifications", "default": "0", "description": "The master switch. While it is off, no rule sends anything, even one set to Automatic. Manual approvals still work only when this is on."},
-  {"fieldname": "max_sends_per_hour", "fieldtype": "Int", "label": "Most automatic messages per hour", "default": "60", "description": "A brake: when the limit is reached the rest wait for the next hour. 0 means no limit."},
-  {"fieldname": "sender_label", "fieldtype": "Data", "label": "Name shown for 'Sender name' values", "default": "Splashjet", "description": "An automatic message has no person behind it; this text fills any template value set to 'Sender name'."},
-  {"fieldname": "test_section", "fieldtype": "Section Break", "label": "Test mode"},
-  {"fieldname": "test_phones", "fieldtype": "Small Text", "label": "Only send to these phone numbers", "description": "One per line. When this is filled, nobody else ever receives a notification (they are logged as skipped). Leave it empty for normal running. Use it for a first trial."}
+  {
+   "fieldname": "one_to_one_section",
+   "fieldtype": "Section Break",
+   "label": "One to one templates"
+  },
+  {
+   "fieldname": "allow_marketing_templates",
+   "fieldtype": "Check",
+   "label": "Allow Marketing templates",
+   "default": "1",
+   "description": "For now. Reps may send an approved Marketing template from the inbox or a Lead, Contact or Customer, with the same consent as a Utility one. A STOP, STOP PROMO or a marketing No still blocks it. Marketing messages cost much more than Utility ones. Automatic notifications stay Utility only."
+  },
+  {
+   "fieldname": "notifications_section",
+   "fieldtype": "Section Break",
+   "label": "Automatic WhatsApp messages"
+  },
+  {
+   "fieldname": "notifications_enabled",
+   "fieldtype": "Check",
+   "label": "Send notifications",
+   "default": "0",
+   "description": "The master switch. While it is off, no rule sends anything, even one set to Automatic. Manual approvals still work only when this is on."
+  },
+  {
+   "fieldname": "max_sends_per_hour",
+   "fieldtype": "Int",
+   "label": "Most automatic messages per hour",
+   "default": "60",
+   "description": "A brake: when the limit is reached the rest wait for the next hour. 0 means no limit."
+  },
+  {
+   "fieldname": "sender_label",
+   "fieldtype": "Data",
+   "label": "Name shown for 'Sender name' values",
+   "default": "Splashjet",
+   "description": "An automatic message has no person behind it; this text fills any template value set to 'Sender name'."
+  },
+  {
+   "fieldname": "test_section",
+   "fieldtype": "Section Break",
+   "label": "Test mode"
+  },
+  {
+   "fieldname": "test_phones",
+   "fieldtype": "Small Text",
+   "label": "Only send to these phone numbers",
+   "description": "One per line. When this is filled, nobody else ever receives a notification (they are logged as skipped). Leave it empty for normal running. Use it for a first trial."
+  },
+  {
+   "fieldname": "teams_section",
+   "fieldtype": "Section Break",
+   "label": "Teams"
+  },
+  {
+   "fieldname": "teams_manage_agents",
+   "fieldtype": "Check",
+   "label": "Teams run the agent lists and roles",
+   "default": "0",
+   "read_only": 1,
+   "description": "Turned on by the Apply button on a Team after the Setup check is clean. From then on the people of each Number and their Waba roles follow the teams."
+  },
+  {
+   "fieldname": "privacy_section",
+   "fieldtype": "Section Break",
+   "label": "Privacy: sensitive details in outgoing messages",
+   "description": "Agents cannot send Aadhaar, PAN, card, bank account, UPI or one-time-code details. A Team Lead or admin may send one anyway with a reason; every attempt is logged (Waba Privacy Log). The check is ON unless you switch it off here."
+  },
+  {
+   "fieldname": "privacy_disabled",
+   "fieldtype": "Check",
+   "label": "Switch the privacy check off",
+   "default": "0",
+   "description": "Leave this unticked for normal running."
+  },
+  {
+   "fieldname": "privacy_skip_aadhaar",
+   "fieldtype": "Check",
+   "label": "Do not check for Aadhaar numbers",
+   "default": "0"
+  },
+  {
+   "fieldname": "privacy_skip_pan",
+   "fieldtype": "Check",
+   "label": "Do not check for PAN",
+   "default": "0"
+  },
+  {
+   "fieldname": "privacy_skip_card",
+   "fieldtype": "Check",
+   "label": "Do not check for card numbers",
+   "default": "0"
+  },
+  {
+   "fieldname": "privacy_column",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "privacy_skip_bank",
+   "fieldtype": "Check",
+   "label": "Do not check for bank account numbers",
+   "default": "0"
+  },
+  {
+   "fieldname": "privacy_skip_upi",
+   "fieldtype": "Check",
+   "label": "Do not check for UPI IDs",
+   "default": "0"
+  },
+  {
+   "fieldname": "privacy_skip_otp",
+   "fieldtype": "Check",
+   "label": "Do not check for one-time codes and PINs",
+   "default": "0"
+  },
+  {
+   "fieldname": "privacy_allow_list",
+   "fieldtype": "Small Text",
+   "label": "Allowed identifiers",
+   "description": "The company's own bank account numbers, UPI IDs and PAN, one per line. These always pass; anything else sensitive is still blocked."
+  },
+  {
+   "fieldname": "campaigns_section",
+   "fieldtype": "Section Break",
+   "label": "Campaigns"
+  },
+  {
+   "fieldname": "campaign_audience_rule",
+   "fieldtype": "Select",
+   "label": "Campaign audience rule",
+   "options": "Everyone\nGeneral consent Yes\nMarketing consent Yes",
+   "default": "Everyone",
+   "description": "Who may go into a campaign Set. Everyone (for now): anyone with a usable number. Someone who replied STOP, who said no, or whose record says do-not-contact is always left out, whatever you choose here."
+  },
+  {
+   "fieldname": "campaign_cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "campaigns_need_approval",
+   "fieldtype": "Check",
+   "label": "Campaigns need approval",
+   "description": "Off: a Campaign Manager sends directly. On: a Waba Admin must approve (once for a whole recurring series)."
+  },
+  {
+   "fieldname": "campaign_hours_start",
+   "fieldtype": "Int",
+   "label": "Allowed hours: from (0-23)",
+   "default": "9"
+  },
+  {
+   "fieldname": "campaign_hours_end",
+   "fieldtype": "Int",
+   "label": "Allowed hours: until (0-23)",
+   "default": "20"
+  },
+  {
+   "fieldname": "campaign_speed",
+   "fieldtype": "Int",
+   "label": "Messages per minute",
+   "default": "30"
+  },
+  {
+   "fieldname": "campaign_failure_streak",
+   "fieldtype": "Int",
+   "label": "Pause after this many failures in a row",
+   "default": "20"
+  },
+  {
+   "fieldname": "campaign_reserved_percent",
+   "fieldtype": "Int",
+   "label": "Daily new-chat allowance kept for notifications and reps (%)",
+   "default": "20"
+  },
+  {
+   "fieldname": "campaign_reply_days",
+   "fieldtype": "Int",
+   "label": "A reply counts for the campaign for (days)",
+   "default": "3"
+  },
+  {
+   "fieldname": "campaign_rates_section",
+   "fieldtype": "Section Break",
+   "label": "Campaign cost estimate",
+   "description": "Rupees per message before GST. The starting values are reported by vendors, not by Meta: check Meta's India rate card and correct them."
+  },
+  {
+   "fieldname": "rate_marketing",
+   "fieldtype": "Float",
+   "label": "Marketing, per message",
+   "default": "0.8631"
+  },
+  {
+   "fieldname": "rate_utility",
+   "fieldtype": "Float",
+   "label": "Utility, per message",
+   "default": "0.115"
+  },
+  {
+   "fieldname": "cb_rates",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "gst_percent",
+   "fieldtype": "Float",
+   "label": "GST (%)",
+   "default": "18"
+  },
+  {
+   "fieldname": "assignment_section",
+   "fieldtype": "Section Break",
+   "label": "Assignment"
+  },
+  {
+   "fieldname": "auto_assign_new_chats",
+   "fieldtype": "Check",
+   "label": "Assign new chats automatically",
+   "default": "1",
+   "description": "On: a new chat is given to an available agent by the number's rules. Off: a new chat waits in the Unassigned list; the Team Leads of the number are alerted and a Team Lead assigns it with Transfer. Chats already with an agent are not touched; this also stops the waiting-chat hand-out."
+  },
+  {
+   "fieldname": "auto_reassign_away",
+   "fieldtype": "Check",
+   "label": "Move a chat to the next available agent when its agent is Away",
+   "default": "0",
+   "description": "Off (paused): a chat stays with its agent even while they are Away, and waiting chats are not handed out automatically; a Team Lead assigns them. New chats from new customers are still given to available agents by the number's rules. On: an Away agent's chats move to the next available agent, and waiting chats go to whoever becomes free."
+  },
+  {
+   "fieldname": "bots_section",
+   "fieldtype": "Section Break",
+   "label": "Bots"
+  },
+  {
+   "fieldname": "bots_enabled",
+   "fieldtype": "Check",
+   "label": "Bots are switched on",
+   "default": "0",
+   "description": "The master switch. While it is off no bot answers anyone, whatever the individual bots say. A bot also respects the test phone list above: when it is filled, bots answer only those numbers."
+  },
+  {
+   "fieldname": "bot_extra_blocks",
+   "fieldtype": "Check",
+   "label": "Bot builder: preview blocks",
+   "default": "0",
+   "description": "Off for now. When it is on, the bot builder offers the preview blocks (Status lookup, Send document, Link button), the silent-customer timeout, per-block numbers and the extra starter bots. While it is off none of them can be used or published, and a bot that already uses them hands the chat to a person instead of running."
+  },
+  {
+   "fieldname": "mobile_section",
+   "fieldtype": "Section Break",
+   "label": "Phone inbox"
+  },
+  {
+   "fieldname": "mobile_inbox_enabled",
+   "fieldtype": "Check",
+   "label": "Phone inbox (Call Tracker app)",
+   "default": "0",
+   "description": "Off for now. When it is on, a phone signed in to the Call Tracker app can use the team inbox: the same chats, replies and rules as the desktop inbox, for people who hold a Waba role. While it is off the phone cannot call any inbox method."
+  }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-02 20:00:00.000000",
+ "modified": "2026-11-14 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Settings",
@@ -31,7 +320,17 @@
  "sort_order": "DESC",
  "states": [],
  "permissions": [
-  {"role": "System Manager", "read": 1, "write": 1, "create": 1},
-  {"role": "Waba Admin", "read": 1, "write": 1, "create": 1}
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1
+  }
  ]
 }

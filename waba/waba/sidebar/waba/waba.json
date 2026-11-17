@@ -48,6 +48,54 @@
    "collapsible": 1
   },
   {
+   "type": "Link",
+   "label": "Campaigns",
+   "link_type": "DocType",
+   "link_to": "Waba Campaign",
+   "icon": "megaphone",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Campaign Sets",
+   "link_type": "DocType",
+   "link_to": "Waba Recipient Set",
+   "icon": "users",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Campaign Recipients",
+   "link_type": "DocType",
+   "link_to": "Waba Campaign Recipient",
+   "icon": "list",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Bots",
+   "link_type": "DocType",
+   "link_to": "Waba Bot",
+   "icon": "bot",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Bot Sessions",
+   "link_type": "DocType",
+   "link_to": "Waba Bot Session",
+   "icon": "list",
+   "collapsible": 1
+  },
+  {
+   "type": "Link",
+   "label": "Bot Log",
+   "link_type": "DocType",
+   "link_to": "Waba Bot Log",
+   "icon": "list",
+   "collapsible": 1
+  },
+  {
    "type": "Section Break",
    "label": "Setup",
    "icon": "settings",
@@ -162,6 +210,14 @@
   },
   {
    "type": "Link",
+   "label": "Privacy Log",
+   "link_type": "DocType",
+   "link_to": "Waba Privacy Log",
+   "collapsible": 1,
+   "child": 1
+  },
+  {
+   "type": "Link",
    "label": "WhatsApp User IDs",
    "link_type": "DocType",
    "link_to": "Waba Identity",
@@ -169,7 +225,7 @@
    "child": 1
   }
  ],
- "modified": "2026-10-29 12:00:00.000000",
+ "modified": "2026-11-05 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba",

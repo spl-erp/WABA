@@ -7,7 +7,7 @@ import json
 import os
 import unittest
 
-from waba.constants import ROLE_ADMIN, ROLE_AGENT, ROLE_SUPERVISOR
+from waba.constants import ROLE_ADMIN, ROLE_AGENT, ROLE_CAMPAIGN, ROLE_SUPERVISOR
 from waba.setup import install
 from waba.setup import workspace_spec as spec
 
@@ -42,7 +42,7 @@ class TestWorkspaceSpec(unittest.TestCase):
 			self.assertEqual(len(labels), len(set(labels)))
 
 	def test_roles_created_and_viewable(self):
-		self.assertEqual(set(install.ROLES), {ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT})
+		self.assertEqual(set(install.ROLES), {ROLE_ADMIN, ROLE_SUPERVISOR, ROLE_AGENT, ROLE_CAMPAIGN})
 		self.assertTrue(set(install.ROLES) <= set(spec.VIEWER_ROLES))
 
 	def test_module_matches_modules_txt(self):
@@ -139,7 +139,7 @@ class TestInboxPage(unittest.TestCase):
 	def test_page_definition(self):
 		d = json.loads(self.read(self.PAGE, "waba_inbox.json"))
 		self.assertEqual((d["doctype"], d["name"], d["page_name"], d["module"], d["standard"]), ("Page", "waba-inbox", "waba-inbox", "Waba", "Yes"))
-		self.assertEqual({r["role"] for r in d["roles"]}, {"Waba Admin", "Waba Supervisor", "Waba Agent", "System Manager"})
+		self.assertEqual({r["role"] for r in d["roles"]}, {"Waba Admin", "Waba Supervisor", "Waba Agent"})
 
 	def test_loader_registers_the_page_and_requests_versioned_assets(self):
 		js = self.read(self.PAGE, "waba_inbox.js")

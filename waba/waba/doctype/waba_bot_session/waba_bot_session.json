@@ -1,0 +1,159 @@
+{
+ "actions": [],
+ "autoname": "hash",
+ "creation": "2026-11-06 14:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bot",
+  "conversation",
+  "status",
+  "ended_reason",
+  "cb",
+  "started_on",
+  "last_activity",
+  "ended_on",
+  "state_section",
+  "current_node",
+  "retries",
+  "messages_sent",
+  "variables",
+  "timeout_at",
+  "timeouts",
+  "active_key"
+ ],
+ "fields": [
+  {
+   "fieldname": "bot",
+   "fieldtype": "Link",
+   "label": "Bot",
+   "options": "Waba Bot",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "Waba Conversation",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nFinished\nHanded over\nExpired\nStopped by agent",
+   "default": "Active",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "ended_reason",
+   "fieldtype": "Small Text",
+   "label": "Why it ended",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cb",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "started_on",
+   "fieldtype": "Datetime",
+   "label": "Started",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_activity",
+   "fieldtype": "Datetime",
+   "label": "Last activity",
+   "read_only": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "ended_on",
+   "fieldtype": "Datetime",
+   "label": "Ended",
+   "read_only": 1
+  },
+  {
+   "fieldname": "state_section",
+   "fieldtype": "Section Break",
+   "label": "Where the customer is"
+  },
+  {
+   "fieldname": "current_node",
+   "fieldtype": "Data",
+   "label": "Waiting at block",
+   "read_only": 1
+  },
+  {
+   "fieldname": "retries",
+   "fieldtype": "Int",
+   "label": "Unclear replies in a row",
+   "read_only": 1
+  },
+  {
+   "fieldname": "messages_sent",
+   "fieldtype": "Int",
+   "label": "Messages sent",
+   "read_only": 1
+  },
+  {
+   "fieldname": "variables",
+   "fieldtype": "Long Text",
+   "label": "Answers kept",
+   "read_only": 1
+  },
+  {
+   "fieldname": "timeout_at",
+   "fieldtype": "Datetime",
+   "label": "No-answer deadline",
+   "read_only": 1,
+   "search_index": 1,
+   "description": "When the 'no answer' path of the block the customer is waiting at will run (preview feature)."
+  },
+  {
+   "fieldname": "timeouts",
+   "fieldtype": "Int",
+   "label": "No-answer paths run",
+   "read_only": 1
+  },
+  {
+   "fieldname": "active_key",
+   "fieldtype": "Data",
+   "label": "Active key",
+   "unique": 1,
+   "hidden": 1,
+   "read_only": 1,
+   "description": "The conversation while the session is Active, empty after; the database allows one Active session per conversation."
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-06 20:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Bot Session",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "naming_rule": "Random"
+}

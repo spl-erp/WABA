@@ -13,6 +13,16 @@ from waba import assignment
 from waba.rules import statuses
 
 
+def _campaign_status(message, status, code):
+	"""A campaign message changed status: tell the campaign. Never lets a campaign problem lose the status update."""
+	try:
+		from waba import campaign_engine
+
+		campaign_engine.on_status(message, status, code)
+	except Exception:
+		frappe.log_error(title="Waba: campaign status update failed")
+
+
 def apply_statuses(value):
 	"""{"updated": n, "unchanged": n, "waiting": [ids]} for a `messages` change value."""
 	result = {"updated": 0, "unchanged": 0, "waiting": []}
@@ -44,6 +54,7 @@ def apply_statuses(value):
 		values.update(statuses.pricing(item))  # what Meta says it charged, kept so cost reports use actuals
 		frappe.db.set_value("Waba Message", name, values, update_modified=False)
 		result["updated"] += 1
+		_campaign_status(name, new, values.get("error_code"))
 		assignment.notify(frappe.db.get_value("Waba Message", name, "conversation"), "status")
 	return result
 

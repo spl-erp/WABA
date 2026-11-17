@@ -5,7 +5,7 @@
  * only shows what the server says and disables Send, with the reason, when it already knows the answer will be no. */
 ;(function () {
 	const DOCTYPES = ["Lead", "Contact", "Customer"];
-	const ROLES = ["Waba Agent", "Waba Supervisor", "Waba Admin", "System Manager"];
+	const ROLES = ["Waba Agent", "Waba Supervisor", "Waba Admin"];
 	const esc = (v) => frappe.utils.escape_html(v == null ? "" : String(v));
 	const allowed = () => ROLES.some((r) => frappe.user.has_role(r));
 
@@ -23,8 +23,11 @@
 			const ctx = r && r.message;
 			if (!ctx || frm.doc.name !== (ctx.name || frm.doc.name)) return;
 			frm.__waba = ctx;
+			frm.__waba_start = () => message_dialog(frm, ctx); // the floating chat's "Message on WhatsApp" for a customer with no chat yet
 			render_dashboard(frm, ctx);
 			add_buttons(frm, ctx);
+			add_chat_icon(frm);
+			if (window.WabaDock) window.WabaDock.update(frm); // a message just sent from the form: the open chat window follows
 		});
 	}
 
@@ -74,6 +77,26 @@
 	function open_conversation(name) {
 		window.waba_open_conversation = name;
 		frappe.set_route("waba-inbox");
+	}
+
+	// ------------------------------------------------------------------------------------------- the floating chat window
+
+	const MARK = `<svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2.5a13.5 13.5 0 0 0-11.6 20.4L2.5 29.5l6.8-1.8A13.5 13.5 0 1 0 16 2.5z" fill="#25d366"/><g transform="translate(8.2 8.2) scale(0.64)" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></g></svg>`;
+
+	function load_dock() {
+		if (window.WabaDock) return Promise.resolve();
+		return frappe.call({ method: "waba.api.inbox.assets_version", silent: true }).then((r) => {
+			const v = encodeURIComponent((r && r.message) || "0");
+			return $.ajax({ url: `/assets/waba/js/waba_dock.js?v=${v}`, dataType: "script", cache: true });
+		});
+	}
+
+	/** The WhatsApp icon in the form header: opens or closes the floating chat window for this record. */
+	function add_chat_icon(frm) {
+		if (!frm.page || !frm.page.add_action_icon) return;
+		if (frm.page.icon_group) frm.page.icon_group.find(".waba-dock-btn").remove();
+		const $b = frm.page.add_action_icon("chat", () => load_dock().then(() => window.WabaDock.toggle(frm)), "waba-dock-btn", __("WhatsApp chat"));
+		$b.html(MARK).css({ display: "inline-flex", alignItems: "center", justifyContent: "center" });
 	}
 
 	// ------------------------------------------------------------------------------------------- buttons
@@ -156,7 +179,7 @@
 			if (!phones.length) return __("This record has no phone number WhatsApp can use. Fix the number on the record first.");
 			if (ctx.consent.opted_out) return __("This customer has opted out of WhatsApp messages.");
 			if (!wrote && ctx.consent.state !== "Yes") return __("There is no WhatsApp consent on this record. Record it first, or wait for the customer to message you.");
-			if (n && !n.templates.length) return __("No approved Utility template for this number. Press Meta, Sync templates on its WhatsApp Account.");
+			if (n && !n.templates.length) return __("No approved template for this number. Press Meta, Sync templates on its WhatsApp Account, or write one under Setup > Templates.");
 			return "";
 		};
 		const refresh_state = () => {
@@ -205,7 +228,7 @@
 				{ fieldtype: "HTML", fieldname: "problem" },
 				{ fieldname: "number", label: __("Send from"), fieldtype: "Select", options: numbers.map((n) => n.label).join("\n"), default: numbers.length ? numbers[0].label : "", reqd: 1, change: fill_templates },
 				{ fieldname: "phone", label: __("To"), fieldtype: "Select", options: Object.keys(phoneByLabel).join("\n"), default: Object.keys(phoneByLabel)[0] || "", reqd: 1 },
-				{ fieldname: "template", label: __("Template (Utility)"), fieldtype: "Select", reqd: 1, change: show_template },
+				{ fieldname: "template", label: __("Template"), fieldtype: "Select", reqd: 1, change: show_template },
 				{ fieldtype: "HTML", fieldname: "tplform" },
 			],
 			primary_action_label: __("Send"),

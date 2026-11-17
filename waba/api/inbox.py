@@ -13,9 +13,9 @@ from frappe.query_builder import Criterion, Order
 from frappe.query_builder.functions import Count
 from frappe.utils import now_datetime
 
-from waba import assignment, permissions, teams
+from waba import assignment, bot, permissions, teams
 from waba.api.send import SENDERS
-from waba.rules import window
+from waba.rules import visibility, window
 from waba.rules.inbound import preview as short_text
 
 VIEWS = ("open", "unread", "triage", "unassigned", "done", "all")
@@ -50,6 +50,7 @@ MESSAGE_FIELDS = [
 	"error_message",
 	"waba_template",
 	"sent_by",
+	"origin",
 	"message_id",
 	"reply_to_message_id",
 	"media_mime",
@@ -64,6 +65,7 @@ MESSAGE_FIELDS = [
 	"customer_reaction",
 	"our_reaction",
 	"retried",
+	"bot",
 ]
 
 
@@ -75,12 +77,22 @@ def assets_version() -> str:
 
 	root = os.path.join(frappe.get_app_path("waba"), "public")
 	stamp = 0
-	for relative in ("js/waba_inbox_lib.js", "js/waba_inbox_app.js", "js/waba_template_dialog.js", "js/waba_notify_ui.js", "js/waba_alerts_core.js", "css/waba_inbox.css"):
+	for relative in ("js/waba_inbox_lib.js", "js/waba_inbox_app.js", "js/waba_dock.js", "js/waba_dock_geometry.js", "js/waba_template_dialog.js", "js/waba_notify_ui.js", "js/waba_sets_ui.js", "js/waba_start_chat.js", "js/waba_bot_graph.js", "js/waba_bot_canvas.js", "js/waba_alerts_core.js", "css/waba_inbox.css"):
 		try:
 			stamp = max(stamp, int(os.path.getmtime(os.path.join(root, relative))))
 		except OSError:
 			pass
 	return str(stamp)
+
+
+@frappe.whitelist()
+def my_numbers():
+	"""The business numbers this person may see, for the inbox's number picker: all of them for an administrator, otherwise the
+	numbers they work as an agent or their team (or a team below it) owns."""
+	frappe.only_for(SENDERS)
+	names = teams.number_names()
+	filters = {} if names is None else {"name": ["in", sorted(names) or [""]]}
+	return frappe.get_all("Waba Number", filters=filters, fields=["name", "display_name", "display_number", "enabled"], order_by="name asc")
 
 
 def _scope():
@@ -98,6 +110,8 @@ def _visible_term(scope, C):
 		parts.append(C.assigned_to.isin(list(scope.users)))
 	if scope.numbers:
 		parts.append(C.waba_number.isin(list(scope.numbers)))
+	if scope.lead_numbers:  # nobody has it yet: the Team Leads over the number see it
+		parts.append(_unassigned_term(C) & C.waba_number.isin(list(scope.lead_numbers)))
 	return Criterion.any(parts) if parts else (C.name == "")
 
 
@@ -163,6 +177,7 @@ def conversations(view: str = "open", number: str | None = None, search: str | N
 	rows = [frappe._dict(r) for r in rows]
 	has_more = len(rows) > limit
 	rows = rows[:limit]
+	with_bots = dict(frappe.get_all("Waba Bot Session", filters={"conversation": ["in", [r.name for r in rows] or [""]], "status": "Active"}, fields=["conversation", "bot"], as_list=True))
 	names = {n.name: n.display_name for n in frappe.get_all("Waba Number", fields=["name", "display_name"])}
 	people = {}
 	now = now_datetime()
@@ -172,6 +187,7 @@ def conversations(view: str = "open", number: str | None = None, search: str | N
 		if row.assigned_to and row.assigned_to not in people:
 			people[row.assigned_to] = frappe.db.get_value("User", row.assigned_to, "full_name") or row.assigned_to
 		row["assigned_name"] = people.get(row.assigned_to)
+		row["bot"] = with_bots.get(row.name)  # a bot is talking to this customer right now
 	return {"rows": rows, "has_more": has_more}
 
 
@@ -186,6 +202,19 @@ def summary(number: str | None = None, scope: str = "all"):
 	counts["can_oversee"] = who.is_lead
 	counts["available"] = _my_availability(who.me)
 	return counts
+
+
+def unread_chats():
+	"""How many chats with unread messages this person may see. It is the number on the Unread chip in the inbox, so the sidebar
+	and the inbox always agree, and it is the same set of chats that raise an alert for them."""
+	query, _C, _scope_used = _conversation_query("unread", "all")
+	return query.select(Count("*")).run()[0][0]
+
+
+@frappe.whitelist()
+def unread_total() -> int:
+	"""The red number on the sidebar Inbox label (cheap: one count). It follows the same visibility as the inbox."""
+	return int(unread_chats() or 0)
 
 
 def _my_availability(user):
@@ -254,6 +283,9 @@ def thread(conversation: str, limit: int = 60, before: str | None = None):
 			"assigned_reason": conv.assigned_reason,
 			"waiting": bool(conv.waiting_since) and not conv.assigned_to,
 			"can_transfer": _may_manage(conv),
+			"can_unassign": bool(conv.assigned_to) and _may_manage(conv),
+			"held": bool(conv.held),
+			"bot": frappe.db.get_value("Waba Bot Session", {"conversation": conv.name, "status": "Active"}, "bot"),
 		},
 		"messages": rows,
 		"notes": notes,
@@ -276,10 +308,7 @@ def _open(conversation):
 
 def _may_manage(conv):
 	"""May this person hand the conversation to someone else or close it: its assignee, or anyone who oversees it."""
-	scope = teams.user_scope()
-	if scope.everything or conv.assigned_to == scope.me:
-		return True
-	return conv.waba_number in scope.lead_numbers or (bool(conv.assigned_to) and conv.assigned_to in scope.users and scope.is_lead)
+	return visibility.can_manage(teams.user_scope(), conv.assigned_to, conv.waba_number)
 
 
 def _notes(conversation, messages, before, has_more):
@@ -332,7 +361,7 @@ def transfer_targets(conversation: str):
 	conv = _open(conversation)
 	number = frappe.get_doc("Waba Number", conv.waba_number)
 	users = [row.user for row in number.agents]
-	enabled = set(frappe.get_all("User", filters={"enabled": 1, "name": ["in", users or [""]]}, pluck="name"))
+	enabled = {u for u in frappe.get_all("User", filters={"enabled": 1, "name": ["in", users or [""]]}, pluck="name") if teams.has_waba_role(u)}
 	counts = dict(
 		frappe.db.sql(
 			"""select assigned_to, count(*) from `tabWaba Conversation`
@@ -364,10 +393,12 @@ def transfer(conversation: str, to_user: str, note: str):
 	if not _may_manage(conv):
 		frappe.throw(_("Only the person it is assigned to, or someone who oversees this number, can transfer it."), frappe.PermissionError)
 	number = frappe.get_doc("Waba Number", conv.waba_number)
-	if number.number_type == "Personal" and not (scope.everything or scope.me == number.owner_user or conv.waba_number in scope.lead_numbers):
+	if number.number_type == "Personal" and not (scope.everything or scope.me == number.owner_user or conv.waba_number in scope.exclusive_numbers):
 		frappe.throw(_("A personal number's conversations are moved only by its owner or a supervisor."), frappe.PermissionError)
 	if to_user not in {row.user for row in number.agents} or not frappe.db.get_value("User", to_user, "enabled"):
 		frappe.throw(_("{0} does not work this number.").format(_full_name(to_user)))
+	if not teams.has_waba_role(to_user):
+		frappe.throw(_("{0} has no Waba role. Add them to a team first.").format(_full_name(to_user)))
 	if to_user == conv.assigned_to:
 		frappe.throw(_("It is already assigned to {0}.").format(_full_name(to_user)))
 	before = conv.assigned_to
@@ -381,10 +412,12 @@ def transfer(conversation: str, to_user: str, note: str):
 			"assigned_reason": _("transferred by {0}").format(_full_name(scope.me)),
 			"assigned_trail": "",
 			"waiting_since": None,
+			"held": 0,
 		},
 		update_modified=False,
 	)
 	conv.reload()
+	bot.on_person_assigned(conv)  # a chat handed to a person is no longer the bot's
 	assignment.add_event(
 		conv.name,
 		_("Transferred from {0} to {1} by {2}. Note: {3}").format(_full_name(before) or _("nobody"), _full_name(to_user), _full_name(scope.me), note),
@@ -396,6 +429,53 @@ def transfer(conversation: str, to_user: str, note: str):
 	if to_user != scope.me:  # the new person is told (tone and notice), unless they did it themself
 		frappe.publish_realtime("waba_inbox", {"conversation": conv.name, "kind": "handed_over"}, user=to_user, after_commit=True)
 	return {"ok": True, "assigned_to": to_user, "assigned_name": _full_name(to_user)}
+
+
+@frappe.whitelist(methods=["POST"])
+def unassign(conversation: str, note: str):
+	"""Take the conversation off whoever has it and put it back on the waiting list. It stays there, ignored by routing, until a
+	Team Lead (or admin) hands it to someone with Transfer."""
+	conv = _open(conversation)
+	note = (note or "").strip()
+	if not note:
+		frappe.throw(_("Write a short note: why is it going back to the waiting list?"))
+	if not _may_manage(conv):
+		frappe.throw(_("Only the person it is assigned to, or someone who oversees it, can return it to the waiting list."), frappe.PermissionError)
+	if not conv.assigned_to:
+		frappe.throw(_("Nobody has this conversation: it is already waiting."))
+	before = conv.assigned_to
+	who = _full_name(frappe.session.user)
+	frappe.db.set_value(
+		"Waba Conversation",
+		conv.name,
+		{
+			"assigned_to": None,
+			"assigned_at": None,
+			"assigned_reason": _("returned to the waiting list by {0}").format(who),
+			"assigned_trail": "",
+			"waiting_since": now_datetime(),
+			"held": 1,
+		},
+		update_modified=False,
+	)
+	conv.reload()
+	assignment.add_event(conv.name, _("Returned to the waiting list by {0} (was with {1}). Note: {2}").format(who, _full_name(before), note))
+	assignment.add_note(conv.name, note)
+	assignment.notify(conv, "assigned")
+	frappe.publish_realtime("waba_inbox", {"conversation": conv.name, "kind": "assigned"}, user=before, after_commit=True)
+	return {"ok": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def take_over_from_bot(conversation: str):
+	"""A person takes the chat from the bot that is talking to the customer: the bot stops and the chat is theirs."""
+	conv = _open(conversation)
+	if not bot.active_session(conv.name):
+		frappe.throw(_("No bot is handling this chat."))
+	if conv.assigned_to and conv.assigned_to != frappe.session.user and not _may_manage(conv):
+		frappe.throw(_("This chat already belongs to someone else."), frappe.PermissionError)
+	bot.take_over(conv)
+	return {"ok": True, "assigned_to": frappe.session.user, "assigned_name": _full_name(frappe.session.user)}
 
 
 @frappe.whitelist(methods=["POST"])

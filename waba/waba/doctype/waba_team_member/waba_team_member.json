@@ -5,7 +5,11 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "role"
+  "role",
+  "max_open",
+  "rep_code",
+  "languages",
+  "may_send_templates"
  ],
  "fields": [
   {
@@ -20,16 +24,43 @@
    "fieldname": "role",
    "fieldtype": "Select",
    "label": "Role in team",
-   "options": "Agent\nLead",
+   "options": "Agent\nTeam Lead",
    "default": "Agent",
    "reqd": 1,
    "in_list_view": 1,
-   "description": "A Lead sees the team's conversations and everything below it; an Agent sees only their own."
+   "description": "A Team Lead sees the team's conversations and everything below it; an Agent sees only their own."
+  },
+  {
+   "fieldname": "max_open",
+   "fieldtype": "Int",
+   "label": "Max open",
+   "default": "0",
+   "in_list_view": 1,
+   "description": "Most open conversations at once. 0 uses the number's default."
+  },
+  {
+   "fieldname": "rep_code",
+   "fieldtype": "Data",
+   "label": "Rep code",
+   "in_list_view": 1,
+   "description": "Used in QR codes and links, for example R12."
+  },
+  {
+   "fieldname": "languages",
+   "fieldtype": "Data",
+   "label": "Languages",
+   "description": "Language codes, comma separated, for example hi,en."
+  },
+  {
+   "fieldname": "may_send_templates",
+   "fieldtype": "Check",
+   "label": "May send templates",
+   "default": "1"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-29 12:00:00.000000",
+ "modified": "2026-11-03 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Team Member",

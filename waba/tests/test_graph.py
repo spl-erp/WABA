@@ -193,3 +193,57 @@ class TestMediaCalls(unittest.TestCase):
 		self.assertEqual(call["timeout"], graph.UPLOAD_TIMEOUT)
 		with self.assertRaises(graph.GraphError):
 			graph.upload_media("TOK", "PN1", "q.pdf", b"x", "application/pdf", http=Fake(Resp({})))
+
+
+class TestWritingTemplates(unittest.TestCase):
+	def test_errors_keep_metas_own_explanation(self):
+		body = {"error": {"message": "Invalid parameter", "code": 100, "error_subcode": 2388023, "error_user_title": "Template Content Invalid", "error_user_msg": "The body has too many variables for its length."}}
+		with self.assertRaises(graph.GraphError) as ctx:
+			graph.call("t", "POST", "x", http=Fake(Resp(body, 400)))
+		e = ctx.exception
+		self.assertEqual((e.code, e.subcode, e.user_title), (100, 2388023, "Template Content Invalid"))
+		self.assertEqual(graph.explain(e), "Template Content Invalid: The body has too many variables for its length.")
+
+	def test_errors_without_a_user_message_explain_as_before(self):
+		with self.assertRaises(graph.GraphError) as ctx:
+			graph.call("t", "POST", "x", http=Fake(error(190, "expired", 401)))
+		self.assertIn("access token", graph.explain(ctx.exception))
+		self.assertIsNone(ctx.exception.user_message)
+
+	def test_create_template_posts_the_request_to_the_account(self):
+		http = Fake(Resp({"id": "99", "status": "PENDING", "category": "UTILITY"}))
+		out = graph.create_template("TOK", "WABA1", {"name": "n", "language": "en", "category": "UTILITY", "components": []}, http=http)
+		self.assertEqual(out["status"], "PENDING")
+		c = http.calls[0]
+		self.assertEqual((c["method"], c["json"]["name"]), ("POST", "n"))
+		self.assertTrue(c["url"].endswith("/WABA1/message_templates"))
+
+	def test_edit_and_delete(self):
+		http = Fake(Resp({"success": True}), Resp({"success": True}), Resp({"success": True}))
+		graph.edit_template("T", "55", [{"type": "BODY", "text": "x"}], category="UTILITY", http=http)
+		self.assertTrue(http.calls[0]["url"].endswith("/55"))
+		self.assertEqual(http.calls[0]["json"], {"components": [{"type": "BODY", "text": "x"}], "category": "UTILITY"})
+		graph.delete_template("T", "WABA1", "old_one", http=http)
+		graph.delete_template("T", "WABA1", "old_one", template_id=77, http=http)
+		self.assertEqual((http.calls[1]["method"], http.calls[1]["params"]), ("DELETE", {"name": "old_one"}))
+		self.assertEqual(http.calls[2]["params"], {"name": "old_one", "hsm_id": "77"})
+
+	def test_sample_upload_is_two_steps_and_the_second_uses_oauth(self):
+		http = Fake(Resp({"id": "upload:MTph"}), Resp({"h": "4::aW1hZ2U"}))
+		handle = graph.upload_sample("TOK", "APP1", "hdr.png", b"\x89PNGdata", "image/png", http=http)
+		self.assertEqual(handle, "4::aW1hZ2U")
+		first, second = http.calls
+		self.assertTrue(first["url"].endswith("/APP1/uploads"))
+		self.assertEqual(first["params"], {"file_name": "hdr.png", "file_length": 8, "file_type": "image/png"})
+		self.assertTrue(second["url"].endswith("/upload:MTph"))
+		self.assertEqual(second["data"], b"\x89PNGdata")
+		self.assertEqual(second["headers"]["Authorization"], "OAuth TOK")
+		self.assertEqual(second["headers"]["file_offset"], "0")
+		self.assertEqual(first["headers"]["Authorization"], "Bearer TOK")
+		self.assertEqual(second["timeout"], graph.UPLOAD_TIMEOUT)
+
+	def test_sample_upload_fails_plainly_when_meta_gives_no_session_or_handle(self):
+		with self.assertRaises(graph.GraphError):
+			graph.upload_sample("T", "A", "f.png", b"x", "image/png", http=Fake(Resp({})))
+		with self.assertRaises(graph.GraphError):
+			graph.upload_sample("T", "A", "f.png", b"x", "image/png", http=Fake(Resp({"id": "upload:1"}), Resp({})))

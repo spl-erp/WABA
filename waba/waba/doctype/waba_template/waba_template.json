@@ -27,9 +27,9 @@
    "label": "WhatsApp Account",
    "options": "Waba Account",
    "reqd": 1,
-   "read_only": 1,
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "read_only_depends_on": "eval:!doc.__islocal"
   },
   {
    "fieldname": "status",
@@ -38,7 +38,7 @@
    "read_only": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "APPROVED templates can be sent. PENDING, REJECTED, PAUSED and DISABLED cannot."
+   "description": "DRAFT is written here and not yet sent to Meta. After Submit to Meta it follows what Meta says: PENDING, APPROVED, REJECTED, PAUSED, DISABLED."
   },
   {
    "fieldname": "column_break_tp1",
@@ -48,25 +48,25 @@
    "fieldname": "template_name",
    "fieldtype": "Data",
    "label": "Name",
-   "read_only": 1
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'"
   },
   {
    "fieldname": "language",
    "fieldtype": "Data",
    "label": "Language",
-   "read_only": 1,
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'"
   },
   {
    "fieldname": "category",
    "fieldtype": "Select",
    "label": "Category",
    "options": "\nMARKETING\nUTILITY\nAUTHENTICATION",
-   "read_only": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Marketing costs about 7.5 times a utility message."
+   "description": "Marketing costs about 7.5 times a utility message.",
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'"
   },
   {
    "fieldname": "content_section",
@@ -75,28 +75,46 @@
   },
   {
    "fieldname": "header_format",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "label": "Header Type",
-   "read_only": 1
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'",
+   "options": "\nTEXT\nIMAGE\nVIDEO\nDOCUMENT\nLOCATION"
   },
   {
    "fieldname": "header_text",
    "fieldtype": "Data",
    "label": "Header",
-   "read_only": 1
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'",
+   "depends_on": "eval:doc.header_format=='TEXT'"
   },
   {
    "fieldname": "body_text",
    "fieldtype": "Text",
    "label": "Body",
-   "read_only": 1,
-   "description": "{{1}}, {{2}} ... are filled in when the template is sent."
+   "description": "{{1}}, {{2}} ... are filled in when the template is sent.",
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'"
   },
   {
    "fieldname": "footer_text",
    "fieldtype": "Data",
    "label": "Footer",
-   "read_only": 1
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'"
+  },
+  {
+   "fieldname": "header_sample",
+   "fieldtype": "Link",
+   "label": "Header sample file",
+   "options": "Waba Shared File",
+   "depends_on": "eval:['IMAGE','VIDEO','DOCUMENT'].includes(doc.header_format)",
+   "read_only_depends_on": "eval:doc.status && doc.status!=='DRAFT' && doc.status!=='REJECTED'",
+   "description": "A file from the Shared Files library that shows Meta what the header looks like. It is only a sample: each message chooses its own file."
+  },
+  {
+   "fieldname": "header_handle",
+   "fieldtype": "Data",
+   "label": "Sample file id at Meta",
+   "read_only": 1,
+   "hidden": 1
   },
   {
    "fieldname": "column_break_tp2",
@@ -142,6 +160,27 @@
    "read_only": 1
   },
   {
+   "fieldname": "draft_problems",
+   "fieldtype": "Small Text",
+   "label": "Still needed before it can be submitted",
+   "read_only": 1,
+   "depends_on": "eval:doc.draft_problems"
+  },
+  {
+   "fieldname": "submitted_at",
+   "fieldtype": "Datetime",
+   "label": "Submitted to Meta",
+   "read_only": 1,
+   "depends_on": "eval:doc.submitted_at"
+  },
+  {
+   "fieldname": "submit_note",
+   "fieldtype": "Small Text",
+   "label": "Meta's last answer",
+   "read_only": 1,
+   "depends_on": "eval:doc.submit_note"
+  },
+  {
    "fieldname": "meta_section",
    "fieldtype": "Section Break",
    "label": "From Meta",
@@ -158,6 +197,20 @@
    "fieldtype": "Datetime",
    "label": "Last Synced",
    "read_only": 1
+  },
+  {
+   "fieldname": "buttons_section",
+   "fieldtype": "Section Break",
+   "label": "Buttons",
+   "depends_on": "eval:doc.status=='DRAFT' || doc.status=='REJECTED' || doc.__islocal"
+  },
+  {
+   "fieldname": "buttons",
+   "fieldtype": "Table",
+   "label": "Buttons (optional)",
+   "options": "Waba Template Button",
+   "depends_on": "eval:doc.status=='DRAFT' || doc.status=='REJECTED' || doc.__islocal",
+   "description": "Up to 10: quick replies, web address, call, copy code. Quick replies go together at the start or end."
   },
   {
    "fieldname": "variables_section",
@@ -187,7 +240,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-02 18:00:00.000000",
+ "modified": "2026-11-03 10:30:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Template",
@@ -205,14 +258,17 @@
    "report": 1,
    "export": 1,
    "delete": 1,
-   "write": 1
+   "write": 1,
+   "create": 1
   },
   {
    "role": "Waba Admin",
    "read": 1,
    "report": 1,
    "export": 1,
-   "write": 1
+   "write": 1,
+   "create": 1,
+   "delete": 1
   },
   {
    "role": "Waba Supervisor",
@@ -234,6 +290,8 @@
   "header_text",
   "body_text",
   "footer_text",
+  "header_sample",
+  "header_handle",
   "column_break_tp2",
   "variable_count",
   "button_count",
@@ -241,9 +299,14 @@
   "quality",
   "unsendable_reason",
   "rejected_reason",
+  "draft_problems",
+  "submitted_at",
+  "submit_note",
   "meta_section",
   "meta_template_id",
   "last_synced",
+  "buttons_section",
+  "buttons",
   "variables_section",
   "variables",
   "components_section",

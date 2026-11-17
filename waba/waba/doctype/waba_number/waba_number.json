@@ -14,6 +14,16 @@
   "name_status",
   "quality_rating",
   "status",
+  "registration_section",
+  "code_verification_status",
+  "registered_at",
+  "column_break_nu5",
+  "registration_pin",
+  "registration_note",
+  "coexistence_section",
+  "coexistence",
+  "coexistence_state",
+  "coexistence_at",
   "use_section",
   "number_type",
   "owner_user",
@@ -112,6 +122,68 @@
    "read_only": 1
   },
   {
+   "fieldname": "registration_section",
+   "fieldtype": "Section Break",
+   "label": "Registration with Meta",
+   "description": "Use the buttons at the top of this form (Registration). Nothing here is sent as a message and nothing is charged."
+  },
+  {
+   "fieldname": "code_verification_status",
+   "fieldtype": "Data",
+   "label": "Verification",
+   "read_only": 1
+  },
+  {
+   "fieldname": "registered_at",
+   "fieldtype": "Datetime",
+   "label": "Registered here on",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_nu5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "registration_pin",
+   "fieldtype": "Password",
+   "label": "Two-step PIN (kept encrypted)",
+   "description": "The 6-digit PIN chosen when registering. Only filled when you ticked \"Save the PIN\". Meta needs it to change or delete this number."
+  },
+  {
+   "fieldname": "registration_note",
+   "fieldtype": "Small Text",
+   "label": "Registration note",
+   "read_only": 1
+  },
+  {
+   "fieldname": "coexistence_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp Business app (coexistence)"
+  },
+  {
+   "fieldname": "coexistence",
+   "fieldtype": "Check",
+   "label": "Also used in the WhatsApp Business app",
+   "default": "0",
+   "description": "Tick only for a number Meta connected to the API while keeping it in the WhatsApp Business app (coexistence). What the team types in the phone app then appears here as \"Phone app\" messages. The registration buttons are switched off for such a number: registering it would cut the phone app link."
+  },
+  {
+   "fieldname": "coexistence_state",
+   "fieldtype": "Select",
+   "label": "Phone app link",
+   "options": "\nConnected\nDisconnected\nOffboarded",
+   "read_only": 1,
+   "depends_on": "coexistence",
+   "description": "Kept up to date from Meta's account updates. Disconnected: the phone app was not opened for about 14 days or the link was cut. Sending from Waba pauses until it is reconnected."
+  },
+  {
+   "fieldname": "coexistence_at",
+   "fieldtype": "Datetime",
+   "label": "Link last changed",
+   "read_only": 1,
+   "depends_on": "coexistence"
+  },
+  {
    "fieldname": "use_section",
    "fieldtype": "Section Break",
    "label": "How this number is used"
@@ -138,7 +210,8 @@
   {
    "fieldname": "team",
    "fieldtype": "Data",
-   "label": "Team or region"
+   "label": "Team or region (not used)",
+   "hidden": 1
   },
   {
    "fieldname": "column_break_nu2",
@@ -258,7 +331,7 @@
    "fieldtype": "Int",
    "label": "Alert Supervisors After (Minutes)",
    "default": "15",
-   "description": "When a customer message is still unanswered after this long, the Leads who oversee this number are told. 0 turns it off."
+   "description": "When a customer message is still unanswered after this long, the Team Leads who oversee this number are told. 0 turns it off."
   },
   {
    "fieldname": "agents_section",
@@ -286,7 +359,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-02 16:00:00.000000",
+ "modified": "2026-11-17 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Number",

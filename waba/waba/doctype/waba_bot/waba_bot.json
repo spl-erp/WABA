@@ -1,0 +1,177 @@
+{
+ "actions": [],
+ "autoname": "field:bot_name",
+ "creation": "2026-11-06 14:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bot_name",
+  "enabled",
+  "waba_number",
+  "trigger",
+  "trigger_keywords",
+  "version",
+  "cb_pub",
+  "published_by",
+  "published_on",
+  "behaviour_section",
+  "stuck_limit",
+  "session_timeout_minutes",
+  "cb_beh",
+  "cooldown_hours",
+  "handover_words",
+  "graph_section",
+  "graph_json",
+  "published_json",
+  "notes"
+ ],
+ "fields": [
+  {
+   "fieldname": "bot_name",
+   "fieldtype": "Data",
+   "label": "Bot name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "in_list_view": 1,
+   "description": "A bot answers customers only when this is on, it has a published version, and Bots are switched on in Waba Settings."
+  },
+  {
+   "fieldname": "waba_number",
+   "fieldtype": "Link",
+   "label": "Number",
+   "options": "Waba Number",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "trigger",
+   "fieldtype": "Select",
+   "label": "Starts when",
+   "options": "\nnew_conversation\nany_unassigned\nkeyword",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "Set in the Trigger block of the bot."
+  },
+  {
+   "fieldname": "trigger_keywords",
+   "fieldtype": "Small Text",
+   "label": "Keywords",
+   "read_only": 1
+  },
+  {
+   "fieldname": "version",
+   "fieldtype": "Int",
+   "label": "Published version",
+   "read_only": 1,
+   "default": "0"
+  },
+  {
+   "fieldname": "cb_pub",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "published_by",
+   "fieldtype": "Link",
+   "label": "Published by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "published_on",
+   "fieldtype": "Datetime",
+   "label": "Published on",
+   "read_only": 1
+  },
+  {
+   "fieldname": "behaviour_section",
+   "fieldtype": "Section Break",
+   "label": "Behaviour"
+  },
+  {
+   "fieldname": "stuck_limit",
+   "fieldtype": "Int",
+   "label": "Hand over after unclear replies",
+   "default": "2",
+   "description": "After this many replies the bot does not understand in a row, it hands the chat to a person."
+  },
+  {
+   "fieldname": "session_timeout_minutes",
+   "fieldtype": "Int",
+   "label": "Give up after (minutes)",
+   "default": "1440",
+   "description": "If the customer goes quiet in the middle of the bot, it ends after this long and the chat goes to the number's normal routing."
+  },
+  {
+   "fieldname": "cb_beh",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cooldown_hours",
+   "fieldtype": "Int",
+   "label": "Do not start again for (hours)",
+   "default": "12",
+   "description": "After the bot finishes with a customer, it will not start again for this long."
+  },
+  {
+   "fieldname": "handover_words",
+   "fieldtype": "Small Text",
+   "label": "Words that ask for a person",
+   "default": "agent, human, person, representative, executive, talk to someone, speak to someone",
+   "description": "Separated by commas. A short message holding one of these hands the chat to a person."
+  },
+  {
+   "fieldname": "graph_section",
+   "fieldtype": "Section Break",
+   "label": "The bot (draft)"
+  },
+  {
+   "fieldname": "graph_json",
+   "fieldtype": "Code",
+   "label": "Bot design",
+   "options": "JSON",
+   "description": "Drawn in the bot builder. Customers get only the published version, so editing here never changes a live bot until you press Publish."
+  },
+  {
+   "fieldname": "published_json",
+   "fieldtype": "Code",
+   "label": "Published bot",
+   "options": "JSON",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  }
+ ],
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-11-06 14:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Bot",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "report": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "bot_name"
+}

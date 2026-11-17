@@ -2,8 +2,8 @@
 
 The choice itself is waba.rules.routing.choose_assignee (pure); this module gathers the facts from the database into
 its Context, saves the answer with the reason, writes an Event note, and sends the live update only to the people who
-may see that conversation (the assignee and the Leads above the number, plus administrators). A conversation nobody can
-take waits ("waiting_since") for the department's Leads and is handed out by `assign_waiting` as people become free.
+may see that conversation (the assignee and the Team Leads above the number, plus administrators). A conversation nobody can
+take waits ("waiting_since") for the department's Team Leads and is handed out by `assign_waiting` as people become free.
 """
 
 import frappe
@@ -11,7 +11,7 @@ from frappe import _
 from frappe.utils import add_to_date, now_datetime
 
 from waba import teams
-from waba.rules import purposes, routing, tags
+from waba.rules import purposes, routing, tags, visibility
 
 HOOK_RECORD_OWNER = "waba_record_owner"
 
@@ -84,6 +84,34 @@ def _party_facts(conversation):
 	return "", ""
 
 
+def auto_reassign_on():
+	"""Waba Settings > "Move a chat to the next available agent when its agent is Away". Off unless someone switches it on."""
+	return bool(frappe.db.get_single_value("Waba Settings", "auto_reassign_away"))
+
+
+def auto_assign_new_on():
+	"""Waba Settings > Assign new chats automatically. Off: new chats wait for a Team Lead to assign them."""
+	if not frappe.get_meta("Waba Settings").has_field("auto_assign_new_chats"):
+		return True  # new code before the migrate: keep the old behaviour, never an error
+	value = frappe.db.get_single_value("Waba Settings", "auto_assign_new_chats")
+	return True if value is None else bool(int(value))  # a site that never saved the setting keeps the old behaviour
+
+
+def _assignee_valid(conversation):
+	"""The assigned person is an enabled user who still works this conversation's number."""
+	user = conversation.assigned_to
+	if not user or not frappe.db.get_value("User", user, "enabled"):
+		return False
+	return bool(frappe.db.exists("Waba Agent Access", {"parent": conversation.waba_number, "parenttype": "Waba Number", "user": user}))
+
+
+def with_bot(conversation):
+	"""A bot is in the middle of this conversation (an Active Waba Bot Session): nobody is assigned and no alert is raised until
+	it hands the chat over, finishes or gives up, and then the number's normal routing runs at once."""
+	name = conversation if isinstance(conversation, str) else conversation.name
+	return bool(frappe.db.exists("Waba Bot Session", {"conversation": name, "status": "Active"}))
+
+
 def assign(conversation, message_body=""):
 	"""Choose and save the assignee when the conversation needs one. Returns the Decision, or None when nothing changed.
 
@@ -92,6 +120,19 @@ def assign(conversation, message_body=""):
 		conversation = frappe.get_doc("Waba Conversation", conversation)
 	if conversation.status == "Done":
 		return None
+	if not conversation.assigned_to and with_bot(conversation):
+		return None  # a bot is talking to the customer; the chat is routed when it ends
+	if conversation.held and not conversation.assigned_to:
+		return None  # returned to the waiting list on purpose: only a Team Lead hands it on
+	if conversation.assigned_to and routing.keep_with_current(conversation.assigned_to, _assignee_valid(conversation), auto_reassign_on()):
+		return None  # automatic re-assignment is paused: the chat stays with its agent, Away or not
+	if routing.needs_lead(conversation.assigned_to, _assignee_valid(conversation), auto_assign_new_on()):
+		# automatic assignment of new chats is off: the chat waits, once, for a Team Lead of the number to hand it on
+		if conversation.waiting_since and not conversation.assigned_to:
+			return None
+		decision = routing.Decision(None, "lead_assign", ("automatic assignment is off",))
+		_save(conversation, decision)
+		return decision
 	number = frappe.db.get_value("Waba Number", conversation.waba_number, [f"purpose_{p}" for p in purposes.PURPOSES] + ["reply_policy"], as_dict=True) or {}
 	if not conversation.assigned_to and purposes.replies_go_to_pool({p: number.get(f"purpose_{p}") for p in purposes.PURPOSES}, number.get("reply_policy")):
 		# a number kept for notifications or campaigns: a customer's reply waits for a supervisor, not a rep picked by the rules
@@ -108,6 +149,30 @@ def assign(conversation, message_body=""):
 	return decision
 
 
+def assign_to_team(conversation, team, agent=None):
+	"""Give the conversation to a person of `team` (and its sub-teams) who works this number. With `agent` named, that person gets
+	it even while Away or full (the admin chose them on purpose); if they can no longer take it (disabled, left the team, not on
+	this number) it falls back to the least busy AVAILABLE agent and says why in the chat. Without one, the least busy available
+	agent. When nobody is free it waits for a Team Lead, like any chat nobody could take. Returns the Decision. Used by a bot's Assign block."""
+	if isinstance(conversation, str):
+		conversation = frappe.get_doc("Waba Conversation", conversation)
+	parents, members, _numbers = teams.load_tree()
+	users = {user for (t, user, _role) in members if t in visibility.subtree(team, parents)} if team in parents else set()
+	ctx = build_context(conversation)
+	ctx.agents = [a for a in ctx.agents if a.user in users]
+	ctx.rules = [routing.Rule(routing.LEAST_BUSY, True)]
+	ctx.number_type = "Shared"
+	ctx.current_assignee = ""
+	if agent and any(a.user == agent for a in ctx.agents):
+		decision = routing.Decision(agent, "bot_choice", ("chosen in the bot",))
+	else:
+		if agent:
+			add_event(conversation.name, _("The bot chose {0}, who cannot take this chat now (not active in team {1} on this number). It went to the team instead.").format(_name(agent), team))
+		decision = routing.choose_assignee(ctx)
+	_save(conversation, decision)
+	return decision
+
+
 REASONS = {
 	"sticky": "stayed with the same agent",
 	"number_owner": "the number's owner",
@@ -117,6 +182,8 @@ REASONS = {
 	"language": "speaks the customer's language",
 	"least_busy": "the least busy agent",
 	"pool": "waiting for an agent",
+	"lead_assign": "waiting for a Team Lead to assign it",
+	"bot_choice": "chosen in the bot",
 }
 
 
@@ -133,17 +200,21 @@ def _save(conversation, decision):
 			"assigned_reason": reason_text(decision.reason),
 			"assigned_trail": ", ".join(decision.trail),
 			"waiting_since": None,
+			"held": 0,
 		}
 		text = _("Assigned to {0}: {1}.").format(_name(decision.assignee), reason_text(decision.reason))
 	else:
 		values = {
 			"assigned_to": None,
 			"assigned_at": None,
-			"assigned_reason": reason_text("pool"),
+			"assigned_reason": reason_text(decision.reason if decision.reason == "lead_assign" else "pool"),
 			"assigned_trail": ", ".join(decision.trail),
 			"waiting_since": conversation.waiting_since or now,
 		}
-		text = _("Waiting for an agent: nobody was available.")
+		if decision.reason == "lead_assign":
+			text = _("Waiting for a Team Lead to assign it: automatic assignment of new chats is off.")
+		else:
+			text = _("Waiting for an agent: nobody was available.")
 	frappe.db.set_value("Waba Conversation", conversation.name, values, update_modified=False)
 	conversation.update(values)
 	add_event(conversation.name, text)
@@ -199,10 +270,13 @@ def notify(conversation, kind):
 
 
 def assign_waiting():
-	"""Every two minutes: give waiting conversations to whoever has become available or has room again."""
+	"""Every two minutes: give waiting conversations to whoever has become available or has room again.
+	Paused (does nothing) while automatic re-assignment, or automatic assignment of new chats, is switched off in Waba Settings."""
+	if not auto_reassign_on() or not auto_assign_new_on():
+		return 0
 	waiting = frappe.get_all(
 		"Waba Conversation",
-		filters={"status": "Open", "waiting_since": ["is", "set"]},
+		filters={"status": "Open", "waiting_since": ["is", "set"], "held": 0},
 		fields=["name"],
 		order_by="waiting_since asc",
 		limit_page_length=200,
@@ -212,6 +286,8 @@ def assign_waiting():
 		conversation = frappe.get_doc("Waba Conversation", row.name)
 		if conversation.assigned_to:
 			frappe.db.set_value("Waba Conversation", row.name, "waiting_since", None, update_modified=False)
+			continue
+		if with_bot(conversation):
 			continue
 		decision = assign(conversation)
 		if decision and decision.assignee:
@@ -223,7 +299,7 @@ def assign_waiting():
 
 
 def alert_unanswered():
-	"""Every two minutes: tell the Leads who oversee a number about a customer message still waiting for an answer.
+	"""Every two minutes: tell the Team Leads who oversee a number about a customer message still waiting for an answer.
 
 	Once per message: `alerted_at` records when the alert for the latest customer message was sent."""
 	now = now_datetime()
@@ -238,6 +314,8 @@ def alert_unanswered():
 		):
 			if c.alerted_at and c.alerted_at >= c.last_inbound_at:
 				continue
+			if with_bot(c.name):
+				continue  # the bot is answering; the alert can come later if nobody has replied once it hands over
 			if frappe.db.exists("Waba Message", {"conversation": c.name, "direction": "Out", "sent_at": [">=", c.last_inbound_at]}):
 				continue
 			for user in teams.number_overseers(c.waba_number, None):

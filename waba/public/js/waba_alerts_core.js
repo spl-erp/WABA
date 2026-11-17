@@ -49,6 +49,29 @@
 		return count > 0 ? `(${count}) ${base}` : base;
 	}
 
+	/** The text of the red count on the sidebar Inbox label: nothing for zero, 99+ for a lot. */
+	function badgeText(count) {
+		const n = Math.floor(Number(count) || 0);
+		return n <= 0 ? "" : n > 99 ? "99+" : String(n);
+	}
+
+	const BADGE_CSS =
+		// the pill sits where Frappe puts its own counters: 8 px from the right edge of the item, vertically centred
+		".waba-sidebar-badge{position:relative;flex:none;margin:0 8px 0 auto;min-width:20px;height:18px;padding:0 6px;box-sizing:border-box;border-radius:9px;" +
+		"background:linear-gradient(180deg,#ef4444,#d92d20);color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center;letter-spacing:.01em;" +
+		"font-variant-numeric:tabular-nums;box-shadow:0 1px 2px rgba(217,45,32,.35);user-select:none}" +
+		// a rise in the count: one quick pop and one soft ring, never on a plain redraw of the sidebar
+		".waba-sidebar-badge.waba-pop{animation:waba-badge-pop .28s cubic-bezier(.3,1.5,.5,1)}" +
+		".waba-sidebar-badge.waba-pop::after{content:'';position:absolute;inset:-2px;border-radius:11px;border:2px solid rgba(239,68,68,.55);animation:waba-badge-ring .9s ease-out forwards;pointer-events:none}" +
+		// the item itself says something is waiting: a stronger label
+		".body-sidebar a.waba-has-unread .sidebar-item-label{font-weight:600;color:var(--text-color,inherit)}" +
+		// a collapsed sidebar has no room for a number: a small dot on the icon instead
+		".body-sidebar-container:not(.expanded) a.waba-has-unread{position:relative}" +
+		".body-sidebar-container:not(.expanded) .waba-sidebar-badge{position:absolute;top:3px;right:3px;margin:0;min-width:9px;width:9px;height:9px;padding:0;font-size:0;line-height:0;border-radius:50%;box-shadow:0 0 0 2px var(--bg-color,#fff)}" +
+		"@keyframes waba-badge-pop{from{transform:scale(.55)}to{transform:scale(1)}}" +
+		"@keyframes waba-badge-ring{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.7)}}" +
+		"@media (prefers-reduced-motion:reduce){.waba-sidebar-badge.waba-pop,.waba-sidebar-badge.waba-pop::after{animation:none}}";
+
 	function start(root) {
 		if (!root.frappe || !root.document || root.waba_alerts) return;
 		const state = { hiddenCount: 0, audio: null };
@@ -61,25 +84,39 @@
 			}
 		};
 
+		// A three-note rising chime, clearly louder than the old two-tone beep: sine plus a soft triangle for body, about 0.75 s.
 		function beep() {
 			try {
 				const Ctx = root.AudioContext || root.webkitAudioContext;
 				if (!Ctx) return;
 				state.audio = state.audio || new Ctx();
 				if (state.audio.state === "suspended") state.audio.resume();
-				const t = state.audio.currentTime;
-				[880, 1175].forEach((freq, i) => {
-					const osc = state.audio.createOscillator();
-					const gain = state.audio.createGain();
-					osc.type = "sine";
-					osc.frequency.value = freq;
-					gain.gain.setValueAtTime(0.0001, t + i * 0.16);
-					gain.gain.exponentialRampToValueAtTime(0.18, t + i * 0.16 + 0.02);
-					gain.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.16 + 0.18);
-					osc.connect(gain);
-					gain.connect(state.audio.destination);
-					osc.start(t + i * 0.16);
-					osc.stop(t + i * 0.16 + 0.2);
+				const ctx = state.audio;
+				const t = ctx.currentTime;
+				const master = ctx.createGain();
+				master.gain.value = 0.9;
+				const comp = ctx.createDynamicsCompressor(); // keeps the louder chime from distorting on laptop speakers
+				master.connect(comp);
+				comp.connect(ctx.destination);
+				[
+					[659.25, 0],
+					[783.99, 0.17],
+					[1046.5, 0.34],
+				].forEach(([freq, at]) => {
+					["sine", "triangle"].forEach((type, k) => {
+						const osc = ctx.createOscillator();
+						const gain = ctx.createGain();
+						osc.type = type;
+						osc.frequency.value = freq;
+						const peak = k === 0 ? 0.55 : 0.18;
+						gain.gain.setValueAtTime(0.0001, t + at);
+						gain.gain.exponentialRampToValueAtTime(peak, t + at + 0.02);
+						gain.gain.exponentialRampToValueAtTime(0.0001, t + at + (at === 0.34 ? 0.45 : 0.3));
+						osc.connect(gain);
+						gain.connect(master);
+						osc.start(t + at);
+						osc.stop(t + at + 0.5);
+					});
 				});
 			} catch (e) {
 				/* the browser may block sound until the first click */
@@ -110,6 +147,59 @@
 			}
 		});
 
+		// ---- the red count on the sidebar Inbox label (Frappe has no badge for sidebar items, so it is drawn here and re-applied
+		// whenever the sidebar is rebuilt)
+		state.unread = Number(root.frappe.boot && root.frappe.boot.waba_unread) || 0;
+		state.shown = state.unread; // no pop for the count the page started with
+		const style = root.document.createElement("style");
+		style.textContent = BADGE_CSS;
+		root.document.head.appendChild(style);
+		function paintBadge() {
+			const text = badgeText(state.unread);
+			const rose = state.unread > (state.shown || 0);
+			root.document.querySelectorAll('.body-sidebar a[href$="waba-inbox"], .sidebar a[href$="waba-inbox"]').forEach((anchor) => {
+				anchor.classList.toggle("waba-has-unread", !!text);
+				let badge = anchor.querySelector(".waba-sidebar-badge");
+				if (!text) return badge && badge.remove();
+				const label = state.unread === 1 ? __("1 chat with unread messages") : __("{0} chats with unread messages", [text]);
+				if (!badge) {
+					badge = root.document.createElement("span");
+					badge.className = "waba-sidebar-badge";
+					anchor.appendChild(badge);
+				}
+				if (badge.textContent !== text) badge.textContent = text;
+				badge.setAttribute("aria-label", label);
+				badge.setAttribute("title", label);
+				if (rose) {
+					badge.classList.remove("waba-pop");
+					void badge.offsetWidth; // restart the animation
+					badge.classList.add("waba-pop");
+					setTimeout(() => badge.classList.remove("waba-pop"), 1000);
+				}
+			});
+			state.shown = state.unread;
+		}
+		let paintQueued = false;
+		const schedulePaint = () => {
+			if (paintQueued) return;
+			paintQueued = true;
+			root.requestAnimationFrame(() => {
+				paintQueued = false;
+				paintBadge();
+			});
+		};
+		new root.MutationObserver(schedulePaint).observe(root.document.body, { childList: true, subtree: true });
+		const refreshUnread = root.frappe.utils.debounce(() => {
+			root.frappe.call({ method: "waba.api.inbox.unread_total", type: "GET", silent: true }).then((r) => {
+				state.unread = Number(r && r.message) || 0;
+				paintBadge();
+			});
+		}, 400);
+		setInterval(refreshUnread, 60000); // a safety net if the live connection drops
+		root.document.addEventListener("visibilitychange", () => !root.document.hidden && refreshUnread());
+		schedulePaint();
+
+		root.frappe.realtime.on("waba_inbox", () => refreshUnread()); // any change (new message, read, hand-over) can change the count
 		root.frappe.realtime.on("waba_inbox", (data) => {
 			const plan = decide({ kind: data && data.kind, conversation: data && data.conversation, hidden: root.document.hidden, inbox: root.waba_inbox_state || null, prefs: load() });
 			if (!plan) return;
@@ -138,6 +228,7 @@
 		});
 
 		root.waba_alerts = {
+			refresh_unread: refreshUnread,
 			prefs: load,
 			set(partial) {
 				save({ ...load(), ...partial });
@@ -152,5 +243,5 @@
 		};
 	}
 
-	return { readPrefs, decide, titleWithCount, start, KEY, DEFAULTS };
+	return { readPrefs, decide, titleWithCount, badgeText, start, KEY, DEFAULTS };
 });

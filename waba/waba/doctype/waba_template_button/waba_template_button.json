@@ -1,0 +1,33 @@
+{
+ "actions": [],
+ "creation": "2026-11-03 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "type",
+  "text",
+  "url",
+  "phone_number",
+  "example"
+ ],
+ "fields": [
+  {"fieldname": "type", "fieldtype": "Select", "label": "Kind", "options": "QUICK_REPLY\nURL\nPHONE_NUMBER\nCOPY_CODE", "default": "QUICK_REPLY", "reqd": 1, "in_list_view": 1},
+  {"fieldname": "text", "fieldtype": "Data", "label": "Button text", "in_list_view": 1, "description": "At most 25 characters. Not used for a copy-code button."},
+  {"fieldname": "url", "fieldtype": "Data", "label": "Web address", "depends_on": "eval:doc.type=='URL'", "in_list_view": 1, "description": "Must start with https://. A {{1}} at the very end becomes a value the rep fills in."},
+  {"fieldname": "phone_number", "fieldtype": "Data", "label": "Phone number", "depends_on": "eval:doc.type=='PHONE_NUMBER'", "description": "International form, for example +919876543210."},
+  {"fieldname": "example", "fieldtype": "Data", "label": "Example", "depends_on": "eval:doc.type=='URL' || doc.type=='COPY_CODE'", "description": "A full example address (when the address has {{1}}), or an example code (letters and digits, at most 15). Meta needs it to review the template."}
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-03 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Template Button",
+ "owner": "Administrator",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "istable": 1,
+ "editable_grid": 1,
+ "permissions": []
+}

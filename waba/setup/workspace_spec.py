@@ -40,6 +40,22 @@ SECTIONS = [
 		],
 	),
 	(
+		"Campaigns",
+		[
+			("Waba Campaign", "Campaigns", "Send an approved template to a locked Set: schedule, test, pause, and see how it went"),
+			("Waba Campaign Recipient", "Campaign Recipients", "Every person in every campaign run and what happened to their message"),
+			("Waba Recipient Set", "Sets", "Locked lists of Customers or Leads a campaign goes to. Build one from the Customer or Lead list: tick people, then Actions > Create Set"),
+		],
+	),
+	(
+		"Bots",
+		[
+			("Waba Bot", "Bots", "Draw an automatic reply flow (welcome menu, questions, hand over to a team) and publish it for a number"),
+			("Waba Bot Session", "Bot Sessions", "Every customer a bot has talked to and how it ended"),
+			("Waba Bot Log", "Bot Log", "Step by step: what a bot did for a customer and why"),
+		],
+	),
+	(
 		"Conversations",
 		[
 			("Waba Conversation", "Conversations", "One thread per business number and customer"),
@@ -49,7 +65,10 @@ SECTIONS = [
 	),
 	(
 		"Activity",
-		[("Waba Webhook Event", "Webhook Events", "Every delivery Meta has sent to the ERP, kept as received")],
+		[
+			("Waba Webhook Event", "Webhook Events", "Every delivery Meta has sent to the ERP, kept as received"),
+			("Waba Privacy Log", "Privacy Log", "Messages stopped (or sent anyway by a Team Lead) because they held sensitive details"),
+		],
 	),
 ]
 
@@ -68,7 +87,7 @@ PAGE_SHORTCUTS = [("waba-inbox", "Inbox")]
 # (label, url): a saved filter on a list
 URL_SHORTCUTS = [("Triage", "/app/waba-conversation?match_state=Triage")]
 
-VIEWER_ROLES = ("Waba Admin", "Waba Supervisor", "Waba Agent", "System Manager")
+VIEWER_ROLES = ("Waba Admin", "Waba Supervisor", "Waba Agent", "Waba Campaign Manager", "System Manager")
 
 
 def content():

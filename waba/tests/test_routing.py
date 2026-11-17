@@ -220,3 +220,28 @@ class TestConfiguredRules(unittest.TestCase):
 
 if __name__ == "__main__":
 	unittest.main()
+
+
+class TestKeepWithCurrent(unittest.TestCase):
+	"""While automatic re-assignment is paused a chat stays with its agent, Away or not."""
+
+	def test_stays_when_the_switch_is_off(self):
+		from waba.rules.routing import keep_with_current as keep
+
+		self.assertTrue(keep("a@x", True, False))
+
+	def test_moves_as_before_when_the_switch_is_on(self):
+		from waba.rules.routing import keep_with_current as keep
+
+		self.assertFalse(keep("a@x", True, True))
+
+	def test_a_broken_assignment_is_still_moved(self):
+		from waba.rules.routing import keep_with_current as keep
+
+		self.assertFalse(keep("a@x", False, False))
+
+	def test_an_unassigned_chat_is_routed(self):
+		from waba.rules.routing import keep_with_current as keep
+
+		self.assertFalse(keep("", True, False))
+		self.assertFalse(keep(None, True, False))

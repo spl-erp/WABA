@@ -280,6 +280,9 @@ after_migrate = ["waba.setup.install.execute"]
 
 scheduler_events = {
 	"cron": {
+		"* * * * *": [
+			"waba.campaign_engine.tick",
+		],
 		"*/2 * * * *": [
 			"waba.api.webhook.retry_waiting",
 			"waba.assignment.assign_waiting",
@@ -288,6 +291,7 @@ scheduler_events = {
 			"waba.notify.scan_leads",
 			"waba.notify.dispatch",
 			"waba.reminders.fire_due",
+			"waba.bot.expire_sessions",
 		],
 		"7 * * * *": [
 			"waba.notify.scan_dates",
@@ -307,11 +311,22 @@ permission_query_conditions = {
 	"Waba Message": "waba.permissions.message_query_conditions",
 	"Waba Note": "waba.permissions.note_query_conditions",
 	"Waba Quick Reply": "waba.permissions.quick_reply_query_conditions",
+	"Waba Recipient Set": "waba.permissions.recipient_set_query_conditions",
+	"Waba Recipient Set Member": "waba.permissions.recipient_set_member_query_conditions",
+	"Waba Campaign": "waba.permissions.campaign_query_conditions",
+	"Waba Number": "waba.permissions.number_query_conditions",
+	"Waba Campaign Recipient": "waba.permissions.campaign_recipient_query_conditions",
 }
 has_permission = {
+	"Waba Team": "waba.teams.has_team_permission",
 	"Waba Conversation": "waba.permissions.conversation_has_permission",
 	"Waba Message": "waba.permissions.message_has_permission",
 	"Waba Note": "waba.permissions.note_has_permission",
+	"Waba Recipient Set": "waba.permissions.recipient_set_has_permission",
+	"Waba Recipient Set Member": "waba.permissions.recipient_set_member_has_permission",
+	"Waba Campaign": "waba.permissions.campaign_has_permission",
+	"Waba Number": "waba.permissions.number_has_permission",
+	"Waba Campaign Recipient": "waba.permissions.campaign_recipient_has_permission",
 }
 
 # the Lead, Contact and Customer forms get a WhatsApp button and a WhatsApp section (added to, never replacing, any other script)
@@ -321,4 +336,10 @@ doctype_js = {
 	"Customer": ["public/js/waba_party.js"],
 	"Quotation": ["public/js/waba_notify_doc.js"],
 	"Sales Invoice": ["public/js/waba_notify_doc.js"],
+}
+
+# "Create Set" in the Actions menu of the Customer and Lead lists (wraps any list script already there, never replaces it)
+doctype_list_js = {
+	"Customer": "public/js/waba_create_set.js",
+	"Lead": "public/js/waba_create_set.js",
 }

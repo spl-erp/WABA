@@ -75,3 +75,33 @@ class TestKeywords(unittest.TestCase):
 		for text in ("START", "start", "Unstop"):
 			self.assertTrue(c.is_start(text), text)
 		self.assertFalse(c.is_start("start the order please"))
+
+
+class TestMarketingTemplatesOneToOne(unittest.TestCase):
+	def check(self, category="MARKETING", **kw):
+		args = dict(category=category, has_written_before=False, consent="Yes", opted_out=False, allow_marketing=True)
+		args.update(kw)
+		return c.check_template(**args)
+
+	def test_marketing_is_still_refused_unless_the_switch_is_on(self):
+		self.assertEqual(self.check(allow_marketing=False)[:2], (False, c.NOT_UTILITY))
+
+	def test_marketing_follows_the_general_consent_when_the_switch_is_on(self):
+		self.assertTrue(self.check()[0])
+		self.assertEqual(self.check(consent="Unknown")[:2], (False, c.NO_CONSENT))
+		self.assertTrue(self.check(consent="Unknown", has_written_before=True)[0])
+
+	def test_stop_and_marketing_no_still_block_it(self):
+		self.assertEqual(self.check(opted_out=True)[:2], (False, c.OPTED_OUT))
+		self.assertEqual(self.check(marketing_blocked=True)[:2], (False, c.MARKETING_OPTED_OUT))
+
+	def test_a_marketing_block_does_not_stop_utility(self):
+		self.assertTrue(self.check(category="UTILITY", marketing_blocked=True)[0])
+
+	def test_authentication_never_goes(self):
+		self.assertEqual(self.check(category="AUTHENTICATION")[:2], (False, c.NOT_UTILITY))
+
+	def test_the_notification_rules_stay_utility_only(self):
+		import os
+		path = os.path.join(os.path.dirname(__file__), "..", "waba", "doctype", "waba_notification_rule", "waba_notification_rule.py")
+		self.assertIn('tpl.category != "UTILITY"', open(path, encoding="utf-8").read())

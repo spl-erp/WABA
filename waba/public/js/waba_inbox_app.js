@@ -16,28 +16,25 @@ class WabaToolbar {
 		this.number = "";
 		this.numbers = [];
 		this.$el = $(`
-			<header class="waba-topbar">
-				<div class="waba-brand-block">
-					${WabaLib.brandMark(40)}
-					<div class="waba-brand-text">
-						<h1 class="waba-title">${__("WhatsApp Inbox")}</h1>
-						<p class="waba-subtitle">${__("Manage your customer conversations")}</p>
+				<header class="waba-topbar">
+					<div class="waba-brand-block">
+						${WabaLib.brandMark(34)}
+						<h1 class="waba-title" title="${__("Manage your customer conversations")}">${__("Inbox")}</h1>
 					</div>
-				</div>
-				<div class="waba-numsel">
-					<button class="waba-pill-btn" aria-haspopup="listbox">
-						${WabaLib.icon("phone", 18)}<span class="waba-grow">${__("All numbers")}</span>${WabaLib.icon("chevron", 16)}
-					</button>
-					<div class="waba-pop" role="listbox" hidden></div>
-				</div>
-				<label class="waba-searchbox">
-					${WabaLib.icon("search", 18)}
-					<input type="search" placeholder="${__("Search by name, phone number or message...")}" autocomplete="off" />
-					<span class="waba-kbd" title="${__("Press / to search")}">/</span>
-				</label>
-				<button class="waba-away" hidden></button>
-				<button class="waba-refresh">${WabaLib.icon("refresh", 17)}<span>${__("Refresh")}</span></button>
-			</header>`).appendTo($parent);
+					<div class="waba-numsel">
+						<button class="waba-pill-btn" aria-haspopup="listbox" title="${__("Choose a number")}">
+							${WabaLib.icon("phone", 16)}<span class="waba-grow">${__("All numbers")}</span>${WabaLib.icon("chevron", 14)}
+						</button>
+						<div class="waba-pop" role="listbox" hidden></div>
+					</div>
+					<button class="waba-away" hidden></button>
+					<button class="waba-refresh waba-iconbtn" aria-label="${__("Refresh")}" title="${__("Refresh")}">${WabaLib.icon("refresh", 19)}</button>
+					<label class="waba-searchbox">
+						${WabaLib.icon("search", 17)}
+						<input type="search" placeholder="${__("Search conversations")}" title="${__("Search by name, phone number or message")}" autocomplete="off" />
+						<span class="waba-kbd" title="${__("Press / to search")}">/</span>
+					</label>
+				</header>`).appendTo($parent);
 		this.$away = this.$el.find(".waba-away");
 		this.available = null;
 		this.$away.on("click", () => this.handlers.onAvailable(!this.available));
@@ -48,6 +45,7 @@ class WabaToolbar {
 
 		this.$pill.on("click", (ev) => {
 			ev.stopPropagation();
+			if (this.numbers.length < 2) return;
 			this.$pop.prop("hidden", !this.$pop.prop("hidden"));
 		});
 		$(document).on("click.waba_numsel", () => this.$pop.prop("hidden", true));
@@ -57,16 +55,26 @@ class WabaToolbar {
 	}
 
 	load_numbers() {
-		frappe.db
-			.get_list("Waba Number", { fields: ["name", "display_name", "enabled"], limit: 100, order_by: "name asc" })
-			.then((rows) => {
-				this.numbers = rows || [];
-				this.render_numbers();
-				if (this.handlers.onNumbers) this.handlers.onNumbers(this.numbers);
-			});
+		// only the numbers this person works or oversees (the server decides, by their team), never every number of the business
+		frappe.call({ method: "waba.api.inbox.my_numbers", silent: true }).then((r) => {
+			this.numbers = (r && r.message) || [];
+			this.render_numbers();
+			if (this.handlers.onNumbers) this.handlers.onNumbers(this.numbers);
+		});
 	}
 
 	render_numbers() {
+		const single = this.numbers.length === 1;  // one number: nothing to choose, so no "All numbers" row and no dropdown
+		this.$pill.toggleClass("waba-single", single).prop("disabled", false);
+		if (single) {
+			const only = this.numbers[0];
+			this.number = "";
+			this.$pill.find(".waba-grow").text(only.display_name || only.name);
+			this.$pill.find("svg:last-child").hide();
+			this.$pop.empty().prop("hidden", true);
+			return;
+		}
+		this.$pill.find("svg:last-child").show();
 		const items = [{ name: "", label: __("All numbers"), sub: "" }].concat(
 			this.numbers.map((n) => ({ name: n.name, label: n.display_name || n.name, sub: n.display_name ? n.name : "" }))
 		);
@@ -119,7 +127,8 @@ class WabaList {
 		this.view = "open";
 		this.scope = "all";
 		this.counts = {};
-		this.$el = $(`<aside class="waba-list"><div class="waba-tabs"></div><div class="waba-scope" hidden></div><div class="waba-items"></div></aside>`).appendTo($parent);
+		this.$el = $(`<aside class="waba-list"><div class="waba-list-head"></div><div class="waba-tabs"></div><div class="waba-scope" hidden></div><div class="waba-items"></div></aside>`).appendTo($parent);
+		this.$head = this.$el.find(".waba-list-head");
 		this.$tabs = this.$el.find(".waba-tabs");
 		this.$scope = this.$el.find(".waba-scope");
 		this.$items = this.$el.find(".waba-items");
@@ -132,7 +141,7 @@ class WabaList {
 		this.render_scope();
 	}
 
-	/** Mine / Team / All: only for people who oversee others (a Lead); an agent has nothing to switch. */
+	/** Mine / Team / All: only for people who oversee others (a Team Lead); an agent has nothing to switch. */
 	render_scope() {
 		const show = !!this.counts.can_oversee;
 		this.$scope.prop("hidden", !show);
@@ -196,6 +205,9 @@ class WabaList {
 			this.$items.html(`<div class="waba-empty">${none ? __("No WhatsApp number is set up for you. Ask an administrator.") : __("No conversations here.")}</div>`);
 			return;
 		}
+		const before = this.seen_unread;
+		this.seen_unread = Object.fromEntries(this.rows.map((r) => [r.name, r.unread_count || 0]));
+		this.pop = before ? new Set(this.rows.filter((r) => (r.unread_count || 0) > (before[r.name] || 0)).map((r) => r.name)) : new Set();
 		const html = this.rows.map((r) => this.row_html(r)).join("");
 		this.$items.html(
 			html +
@@ -211,27 +223,31 @@ class WabaList {
 		const lines = WabaLib.customerLines(r);
 		const unread = r.unread_count > 0;
 		const chips = [];
-		if (r.match_state === "Triage") chips.push(`<span class="waba-chip orange">${__("Triage")}</span>`);
-		if (r.status === "Done") chips.push(`<span class="waba-chip">${__("Done")}</span>`);
-		else chips.push(`<span class="waba-chip ${r.window_open ? "green" : "red"}">${r.window_open ? __("Window open") : __("Window closed")}</span>`);
-		if (r.number_name) chips.push(`<span class="waba-chip">${waba_e(r.number_name)}</span>`);
+		if (r.match_state === "Triage") chips.push(`<span class="waba-chip">${__("Triage")}</span>`);
+		if (r.bot) chips.push(`<span class="waba-chip bot" title="${waba_e(__("Bot {0} is talking to this customer", [r.bot]))}">${__("Bot")}</span>`);
+		if (r.status === "Done") chips.push(`<span class="waba-chip green">${__("Done")}</span>`);
+		else {
+			// the window only matters when it is about to close
+			const left = r.window_open && r.window_expires_at ? new Date(frappe.datetime.str_to_obj(r.window_expires_at)) - new Date() : null;
+			if (left !== null && left > 0 && left < 2 * 3600 * 1000) chips.push(`<span class="waba-chip orange">${__("Window closes in {0}", [WabaLib.timeLeft(new Date(Date.now() + left))])}</span>`);
+		}
+		if (r.number_name && this.numbers_known && this.numbers_known.length > 1) chips.push(`<span class="waba-chip">${waba_e(r.number_name)}</span>`);
 		if (this.counts.can_oversee && r.status !== "Done") {
-			chips.push(r.assigned_to ? `<span class="waba-chip blue">${WabaLib.icon("user", 11)}${waba_e(r.assigned_name || r.assigned_to)}</span>` : `<span class="waba-chip orange">${__("Unassigned")}</span>`);
+			chips.push(r.assigned_to ? `<span class="waba-chip">${waba_e(r.assigned_name || r.assigned_to)}</span>` : `<span class="waba-chip orange">${__("Unassigned")}</span>`);
 		}
 		return `
 			<button class="waba-row ${unread ? "unread" : ""} ${r.name === this.current ? "selected" : ""}" data-name="${waba_e(r.name)}">
 				<span class="waba-avatar" style="background:${WabaLib.avatarColor(lines.name)}">${waba_e(WabaLib.initials(lines.name))}</span>
 				<span class="waba-row-main">
 					<span class="waba-row-top">
-						<span class="waba-row-name"><span>${waba_e(lines.name)}</span>${r.match_state === "Matched" ? WabaLib.verifiedBadge(15) : ""}</span>
+						<span class="waba-row-name"><span>${waba_e(lines.name)}</span>${r.match_state === "Matched" ? WabaLib.verifiedBadge(14) : ""}</span>
 						<span class="waba-row-time">${r.last_message_at ? waba_e(frappe.datetime.prettyDate(r.last_message_at, true)) : ""}</span>
 					</span>
-					${lines.sub ? `<span class="waba-row-phone">${waba_e(lines.sub)}</span>` : ""}
 					<span class="waba-row-bottom">
-						<span class="waba-row-preview">${waba_e(r.last_message_preview || "")}</span>
-						${unread ? `<span class="waba-badge">${r.unread_count}</span>` : ""}
+						<span class="waba-row-preview">${waba_e(r.last_message_preview || lines.sub || "")}</span>
+						${unread ? `<span class="waba-badge ${this.pop && this.pop.has(r.name) ? "pop" : ""}">${r.unread_count}</span>` : ""}
 					</span>
-					<span class="waba-chips">${chips.join("")}</span>
+					${chips.length ? `<span class="waba-chips">${chips.join("")}</span>` : ""}
 				</span>
 			</button>`;
 	}
@@ -273,10 +289,10 @@ class WabaComposer {
 		this.close_quick();
 		this.close_attach();
 		const note = this.kind === "note";
-		const tabs = `<div class="waba-compose-tabs" role="tablist">
-			<button class="waba-ctab ${note ? "" : "active"}" data-kind="reply">${__("Reply")}</button>
-			<button class="waba-ctab note ${note ? "active" : ""}" data-kind="note">${WabaLib.icon("note", 14)}${__("Note")}</button>
-			<span class="waba-ctab-hint">${note ? __("Notes are only for your team. They are never sent to the customer.") : ""}</span></div>`;
+		this.$el.toggleClass("note-mode", note);
+			const tabs = `<div class="waba-compose-tabs" role="tablist">
+				<button class="waba-ctab ${note ? "" : "active"}" data-kind="reply">${__("Reply")}</button>
+				<button class="waba-ctab note ${note ? "active" : ""}" data-kind="note">${__("Note")}</button></div>`;
 		const can_attach = !note && this.mode === "open";
 		const attach = `<button class="waba-circle waba-attach-btn" ${can_attach ? "" : "disabled"} title="${can_attach ? __("Attach a file, an ERP document or a library file") : note ? __("Notes cannot have files") : __("Files can be sent only while the 24-hour window is open")}" aria-label="${__("Attach")}">${WabaLib.icon("paperclip", 19)}</button>`;
 		const emoji = (enabled) => `<button class="waba-circle waba-emoji-btn" ${enabled ? "" : "disabled"} aria-label="${__("Emoji")}" title="${__("Emoji")}">${WabaLib.icon("smile", 19)}</button>`;
@@ -291,10 +307,10 @@ class WabaComposer {
 			this.$el.html(`${tabs}${attach}${emoji(false)}${quick(false)}<div class="waba-inputwrap disabled">${__("This customer is known only by a WhatsApp user ID; replying needs their phone number (not supported yet).")}</div>`);
 		} else {
 			const placeholder = note
-				? __("Write a note for your team")
+				? __("Internal note (team only)")
 				: window.innerWidth < 768
 				? __("Type a message")
-				: __("Type a message (Enter to send, Shift+Enter for a new line)");
+				: __("Type a message");
 			this.$el.html(`${tabs}${attach}${emoji(true)}${quick(true)}
 				<div class="waba-inputwrap ${note ? "note" : ""}"><textarea rows="1" placeholder="${placeholder}"></textarea></div>
 				<button class="waba-send ${note ? "note" : ""}" aria-label="${note ? __("Add note") : __("Send")}" title="${note ? __("Add note") : __("Send")}">${WabaLib.icon(note ? "note" : "send", 20)}</button>`);
@@ -528,6 +544,9 @@ class WabaThread {
 			this.divider_n = 0;
 			this.unseen = 0;
 			this.last_count = 0;
+			this.$el.removeClass("waba-enter");
+			void this.$el[0].offsetWidth;
+			this.$el.addClass("waba-enter");
 			this.$el.html(`<div class="waba-th-head"></div><div class="waba-banner"></div><div class="waba-findbar" hidden></div><div class="waba-messages"></div><button class="waba-jump" hidden>${WabaLib.icon("arrowdown", 16)}<span></span></button>`);
 			this.$head = this.$el.find(".waba-th-head");
 			this.$banner = this.$el.find(".waba-banner");
@@ -604,27 +623,26 @@ class WabaThread {
 		const lines = WabaLib.customerLines({ ...c, name: c.name });
 		const party =
 			c.party_doctype && c.party
-				? `<a class="waba-th-record" href="${frappe.utils.get_form_link(c.party_doctype, c.party)}">${WabaLib.icon("link", 14)}${waba_e(c.party_doctype)}: ${waba_e(c.party)}</a>`
-				: `<span class="waba-chip orange" style="margin-top:4px">${__("Not in the ERP yet")}</span>`;
+				? `<a class="waba-th-record" href="${frappe.utils.get_form_link(c.party_doctype, c.party)}" title="${waba_e(c.party_doctype)}">${waba_e(c.party)}</a>`
+				: `<span class="waba-th-assign waiting">${__("Not in the ERP yet")}</span>`;
 		const assignee = c.assigned_to
-			? `<div class="waba-th-assign">${WabaLib.icon("user", 13)}${__("Assigned to {0}", [waba_e(c.assigned_name || c.assigned_to)])}${c.assigned_reason ? ` <span class="waba-why">· ${waba_e(c.assigned_reason)}</span>` : ""}</div>`
-			: `<div class="waba-th-assign waiting">${WabaLib.icon("clock", 13)}${c.waiting ? __("Waiting for an agent") : __("Not assigned")}</div>`;
+			? `<span class="waba-th-assign" title="${c.assigned_reason ? waba_e(c.assigned_reason) : ""}">${__("With {0}", [waba_e(c.assigned_name || c.assigned_to)])}</span>`
+			: `<span class="waba-th-assign waiting">${c.waiting ? __("Waiting for an agent") : __("Not assigned")}</span>`;
 		const env = c.environment && c.environment !== "Production" ? `<span class="waba-env">${waba_e(c.environment)}</span>` : "";
+		const done = c.status === "Done";
 		this.$head.html(`
 			<button class="waba-iconbtn waba-back" aria-label="${__("Back")}">${WabaLib.icon("back", 20)}</button>
 			<span class="waba-avatar lg" style="background:${WabaLib.avatarColor(lines.name)}">${waba_e(WabaLib.initials(lines.name))}</span>
 			<div class="waba-th-id">
-				<div class="waba-th-name"><span>${waba_e(lines.name)}</span>${c.match_state === "Matched" ? WabaLib.verifiedBadge(17) : ""}${env}</div>
-				${lines.sub ? `<div class="waba-th-phone">${waba_e(lines.sub)}</div>` : ""}
-				${party}
-				${assignee}
+				<div class="waba-th-name"><span>${waba_e(lines.name)}</span>${c.match_state === "Matched" ? WabaLib.verifiedBadge(16) : ""}${env}</div>
+				<div class="waba-th-sub">${assignee}${lines.sub ? `<span class="waba-th-phone">${waba_e(lines.sub)}</span>` : ""}${party}</div>
 			</div>
 			<div class="waba-th-actions">
-				${c.can_transfer ? `<button class="waba-btn waba-transfer-btn" title="${__("Hand this conversation to another agent")}">${WabaLib.icon("transfer", 15)}<span class="waba-btn-text">${__("Transfer")}</span></button>
-				<button class="waba-btn waba-status-btn" title="${c.status === "Done" ? __("Reopen") : __("Mark done")}">${WabaLib.icon(c.status === "Done" ? "undo" : "done", 15)}<span class="waba-btn-text">${c.status === "Done" ? __("Reopen") : __("Mark done")}</span></button>` : ""}
-				<button class="waba-btn waba-btn-secondary waba-open-record" title="${__("Open Record")}">${WabaLib.icon("external", 15)}<span class="waba-btn-text">${__("Open Record")}</span></button>
-				<button class="waba-btn waba-btn-secondary waba-template-btn" title="${__("Send Template")}">${WabaLib.icon("send", 15)}<span class="waba-btn-text">${__("Send Template")}</span></button>
-				<button class="waba-iconbtn waba-more-btn" aria-label="${__("More actions")}">${WabaLib.icon("more", 20)}</button>
+				${c.can_transfer ? `<button class="waba-iconbtn waba-transfer-btn" title="${__("Transfer: hand this conversation to another agent")}" aria-label="${__("Transfer")}">${WabaLib.icon("transfer", 20)}</button>
+				<button class="waba-iconbtn waba-status-btn" title="${done ? __("Reopen") : __("Mark done")}" aria-label="${done ? __("Reopen") : __("Mark done")}">${WabaLib.icon(done ? "undo" : "done", 20)}</button>` : ""}
+				<button class="waba-iconbtn waba-open-record" title="${__("Open Record")}" aria-label="${__("Open Record")}">${WabaLib.icon("external", 20)}</button>
+				<button class="waba-iconbtn waba-template-btn" title="${__("Send Template")}" aria-label="${__("Send Template")}">${WabaLib.icon("send", 20)}</button>
+				<button class="waba-iconbtn waba-more-btn" title="${__("More actions")}" aria-label="${__("More actions")}">${WabaLib.icon("more", 20)}</button>
 			</div>`);
 		this.$head.find(".waba-back").on("click", () => this.handlers.onBack());
 		this.$head.find(".waba-open-record").on("click", () => this.handlers.onOpenRecord());
@@ -654,11 +672,17 @@ class WabaThread {
 		}
 		this.$banner
 			.attr("class", `waba-banner ${kind} ${this.expanded ? "expanded" : ""}`)
-			.html(`<div class="waba-banner-line">${WabaLib.brandMark(22)}<span class="waba-grow">${line}</span><span class="waba-dot"></span><button class="waba-chev" aria-label="${__("Details")}">${WabaLib.icon("chevron", 16)}</button></div><div class="waba-banner-detail">${waba_e(detail)}</div>`);
+			.html(`<div class="waba-banner-line">${WabaLib.brandMark(18)}<span class="waba-grow">${line}</span><button class="waba-chev" aria-label="${__("Details")}">${WabaLib.icon("chevron", 16)}</button></div><div class="waba-banner-detail">${waba_e(detail)}</div>`);
 		this.$banner.find(".waba-chev").on("click", () => {
 			this.expanded = !this.expanded;
 			this.$banner.toggleClass("expanded", this.expanded);
 		});
+		if (c.bot) {
+			this.$banner.append(
+				`<div class="waba-bot-line"><span class="waba-grow">${__("The bot {0} is handling this chat.", [`<b>${waba_e(c.bot)}</b>`])} ${__("Nobody is assigned until it hands over.")}</span><button class="btn btn-xs btn-primary waba-takeover">${__("Take over")}</button></div>`
+			);
+			this.$banner.find(".waba-takeover").on("click", () => this.handlers.onTakeOver && this.handlers.onTakeOver());
+		}
 	}
 
 	render_messages(stick, keepPosition) {
@@ -666,6 +690,7 @@ class WabaThread {
 		const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
 		const previousTop = box.scrollTop;
 		let lastDay = null;
+		let prev = null;
 		const earlier = this.has_more
 			? `<div class="waba-earlier-wrap"><button class="waba-more waba-earlier">${WabaLib.icon("arrowup", 15)}${__("Load earlier messages")}</button></div>`
 			: "";
@@ -676,8 +701,11 @@ class WabaThread {
 				lastDay = day || lastDay;
 				if (item.type === "message") {
 					const divider = item.data.name === this.divider_at ? `<div class="waba-unread-div"><span>${this.divider_n === 1 ? __("1 new message") : __("{0} new messages", [this.divider_n])}</span></div>` : "";
-					return sep + divider + this.message_html(item.data);
+					const sameRun = !sep && !divider && prev && prev.type === "message" && prev.data.direction === item.data.direction && prev.data.sent_by === item.data.sent_by;
+					prev = item;
+					return sep + divider + this.message_html(item.data, { first: !sameRun });
 				}
+				prev = item;
 				return sep + (item.type === "event" ? this.event_html(item.data) : this.note_html(item.data));
 			})
 			.join("");
@@ -690,6 +718,9 @@ class WabaThread {
 		this.bind_message_actions();
 		if (this.query) this.collect_hits();
 		const count = this.messages.length;
+		if (!keepPosition && this.last_count > 0 && count > this.last_count) {
+			this.$messages.find(".waba-msg:not(.note)").slice(-(count - this.last_count)).addClass("waba-new");
+		}
 		if (keepPosition) {
 			this.last_count = count;
 			return;
@@ -848,7 +879,13 @@ class WabaThread {
 		this.query = "";
 		this.hit = -1;
 		this.$find.prop("hidden", true).empty();
+		this.set_count("");
 		this.render_messages(false, true);
+	}
+
+	set_count(label) {
+		this.count_label = label;
+		this.$find.find(".waba-find-count").text(label);
 	}
 
 	set_query(text) {
@@ -862,7 +899,7 @@ class WabaThread {
 		this.hits = this.$messages.find("mark").toArray();
 		const n = this.hits.length;
 		const label = !this.query ? "" : !n ? __("No matches") : this.hit >= 0 ? `${this.hit + 1} / ${n}` : __("{0} found", [n]);
-		this.$find.find(".waba-find-count").text(label);
+		this.set_count(label);
 		if (this.hit >= 0 && this.hits[this.hit]) $(this.hits[this.hit]).addClass("current");
 	}
 
@@ -873,11 +910,18 @@ class WabaThread {
 		const el = this.hits[this.hit];
 		$(el).addClass("current");
 		this.center(el);
-		this.$find.find(".waba-find-count").text(`${this.hit + 1} / ${this.hits.length}`);
+		// pictures above the match finish loading after the scroll and push it away: look again and re-centre if it left the middle
+		setTimeout(() => {
+			if (!el.isConnected) return;
+			const box = this.$messages[0].getBoundingClientRect();
+			const r = el.getBoundingClientRect();
+			if (r.top < box.top + box.height * 0.2 || r.bottom > box.bottom - box.height * 0.2) this.center(el);
+		}, 450);
+		this.set_count(`${this.hit + 1} / ${this.hits.length}`);
 	}
 
 	event_html(n) {
-		return `<div class="waba-event" data-note="${waba_e(n.name)}"><span>${WabaLib.highlight(waba_e(n.body), "")}</span></div>`;
+		return `<div class="waba-event" data-note="${waba_e(n.name)}"><span>${WabaLib.highlight(waba_e(n.body), this.query)}</span></div>`;
 	}
 
 	note_html(n) {
@@ -886,13 +930,11 @@ class WabaThread {
 			<div class="waba-foot"><span class="waba-foot-right"><span>${waba_e(WabaLib.clockLabel(n.creation))}</span></span></div></div></div>`;
 	}
 
-	message_html(m) {
+	message_html(m, run = { first: true }) {
 		const out = m.direction === "Out";
 		const failed = m.status === "Failed";
 		const tick = out ? WabaLib.tickFor(m.status) : null;
 		const tag = m.template_title ? `<div class="waba-tag">${WabaLib.icon("send", 12)}${__("Template")}: ${waba_e(m.template_title)}</div>` : "";
-		const senderName = out ? waba_e(m.sent_by_name || __("Sent")) : "";
-		const sender = out && !failed ? `<div class="waba-sender">${senderName}</div>` : "";
 		const err = failed
 			? `<div class="waba-errorbox">${WabaLib.icon("warning", 15)}<span>${__("Not delivered")}: ${waba_e(m.error_message || __("Meta did not accept this message."))}${WabaLib.canRetry(m) ? ` <button class="waba-link waba-retry" data-id="${waba_e(m.name)}">${__("Send again")}</button>` : ""}</span></div>`
 			: "";
@@ -905,9 +947,9 @@ class WabaThread {
 		const react_btn = react_on ? `<button class="waba-react-btn" data-id="${waba_e(m.name)}" title="${__("React")}" aria-label="${__("React")}">${WabaLib.icon("smile", 14)}</button>` : "";
 		const chips = WabaLib.reactionsFor(m).map((r) => `<span class="waba-chip" title="${waba_e(__(r.who))}">${waba_e(r.emoji)}</span>`).join("");
 		const info = [m.sent_at && `${__("Sent")} ${m.sent_at}`, m.delivered_at && `${__("Delivered")} ${m.delivered_at}`, m.read_at && `${__("Read")} ${m.read_at}`].filter(Boolean).join(" · ");
-		return `<div class="waba-msg ${out ? "out" : "in"} ${failed ? "failed" : ""}" data-id="${waba_e(m.name)}" data-mid="${waba_e(m.message_id || "")}">
-			<div class="waba-bubble">${react_btn}${sender}${tag}${quote}<div class="waba-text">${text}</div>${chips ? `<div class="waba-reacts">${chips}</div>` : ""}${err}
-				<div class="waba-foot">${failed ? `<span class="waba-foot-name">${senderName}</span>` : ""}<span class="waba-foot-right"><span title="${waba_e(info)}">${waba_e(WabaLib.clockLabel(m.sent_at))}</span> ${tickHtml}</span></div></div></div>`;
+		return `<div class="waba-msg ${out ? "out" : "in"} ${run.first ? "first" : ""} ${failed ? "failed" : ""}" data-id="${waba_e(m.name)}" data-mid="${waba_e(m.message_id || "")}">
+			<div class="waba-bubble">${react_btn}${tag}${quote}<div class="waba-text">${text}</div>${chips ? `<div class="waba-reacts">${chips}</div>` : ""}${err}
+				<div class="waba-foot">${out ? `<span class="waba-foot-name" title="${__("Sent by")}">${waba_e(WabaLib.senderLabel(m))}</span>` : ""}<span class="waba-foot-right"><span title="${waba_e(info)}">${waba_e(WabaLib.clockLabel(m.sent_at))}</span> ${tickHtml}</span></div></div></div>`;
 	}
 }
 
@@ -924,16 +966,41 @@ function load_template_dialog() {
 }
 
 class WabaInbox {
-	constructor(page, wrapper) {
+	constructor(page, wrapper, opts = {}) {
 		this.page = page;
 		this.wrapper = wrapper;
+		this.dock = opts.dock || null; // a docked single-conversation view (waba_dock.js): no page, list or toolbar
 		this.current = null;
 		this.drafts = {}; // what was typed per conversation, kept while the page is open
 		this.number = "";
 		this.search = "";
+		this.reload_soon = frappe.utils.debounce(() => this.on_event(), 400);
+		if (this.dock) {
+			this.$shell = null;
+			this.$panels = null;
+			this.list = null;
+			this.toolbar = null;
+			this.thread = new WabaThread(this.dock.$body, this.thread_handlers());
+			frappe.realtime.on("waba_inbox", (data) => {
+				if (!this.dock.visible) return;
+				this.pending = data || {};
+				this.reload_soon();
+			});
+			return;
+		}
 		this.$shell = $(`<div class="waba-shell"><div class="waba-inbox"></div></div>`);
 		$(page.main).empty().append(this.$shell);
-		this.toolbar = new WabaToolbar(this.$shell, {
+		this.$panels = this.$shell.find(".waba-inbox");
+		this.list = new WabaList(this.$panels, {
+			onTab: () => this.load_list(),
+			onScope: () => {
+				this.load_list();
+				this.refresh_counts();
+			},
+			onOpen: (name) => this.open_thread(name),
+			onMore: () => this.load_list(false),
+		});
+		this.toolbar = new WabaToolbar(this.list.$head, {
 			onNumber: (number) => {
 				this.number = number;
 				this.load_list();
@@ -951,23 +1018,23 @@ class WabaInbox {
 				}
 			},
 		});
-		this.$shell.prepend(this.toolbar.$el);
-		this.$panels = this.$shell.find(".waba-inbox");
-		this.list = new WabaList(this.$panels, {
-			onTab: () => this.load_list(),
-			onScope: () => {
-				this.load_list();
-				this.refresh_counts();
-			},
-			onOpen: (name) => this.open_thread(name),
-			onMore: () => this.load_list(false),
+		this.thread = new WabaThread(this.$panels, this.thread_handlers());
+		$(document).off("waba:open").on("waba:open", (ev, name) => name && this.open_thread(name));
+		frappe.realtime.on("waba_inbox", (data) => {
+			this.pending = data || {};
+			this.reload_soon();
 		});
-		this.thread = new WabaThread(this.$panels, {
+	}
+
+	/** What the chat view calls back into: shared by the inbox page and the docked window. */
+	thread_handlers() {
+		return {
 			onBack: () => this.close_thread(),
 			onSend: (body) => this.send("send_text", { body }),
 			onNote: (body) => this.add_note(body),
 			onQuick: () => this.quick_replies(),
 			onTransfer: () => this.transfer_dialog(),
+			onTakeOver: () => this.take_over_from_bot(),
 			onStatus: (status) => this.set_status(status),
 			onTemplate: () => this.template_dialog(),
 			onFile: (file) => this.file_dialog(file),
@@ -980,25 +1047,27 @@ class WabaInbox {
 			onEarlier: (before) => this.load_earlier(before),
 			onOpenRecord: () => this.open_record(),
 			onMore: ($anchor) => this.more_menu($anchor),
-		});
-		$(document).off("waba:open").on("waba:open", (ev, name) => name && this.open_thread(name));
-		this.reload_soon = frappe.utils.debounce(() => this.on_event(), 400);
-		frappe.realtime.on("waba_inbox", (data) => {
-			this.pending = data || {};
-			this.reload_soon();
-		});
+		};
 	}
 
 	// ---------------------------------------------------------------- lifecycle
 
 	publish_state() {
-		window.waba_inbox_state = { visible: !!this.shown, current: this.current };
+		const visible = this.dock ? !!this.dock.visible : !!this.shown;
+		window.waba_inbox_state = { visible, current: this.current };
 	}
 
 	show() {
 		this.shown = true;
 		this.refresh();
 		this.publish_state();
+		if (!window.waba_open_conversation) {
+			// "Open in inbox" from the floating chat opens this page in a new tab with the conversation in the address
+			try {
+				const wanted = new URLSearchParams(window.location.search).get("conversation");
+				if (wanted && /^[A-Za-z0-9_-]+$/.test(wanted)) window.waba_open_conversation = wanted;
+			} catch (e) {}
+		}
 		if (window.waba_open_conversation) {
 			const wanted = window.waba_open_conversation;
 			window.waba_open_conversation = null;
@@ -1015,6 +1084,10 @@ class WabaInbox {
 			if (ev.key === "/" && !ev.ctrlKey && !ev.metaKey && !["input", "textarea", "select"].includes(tag) && !ev.target.isContentEditable) {
 				ev.preventDefault();
 				this.toolbar.focus_search();
+			}
+			else if ((ev.key === "f" || ev.key === "F") && (ev.ctrlKey || ev.metaKey) && !ev.shiftKey && !ev.altKey && this.shown && this.thread.data) {
+				ev.preventDefault();
+				this.thread.open_search(); // search in the open conversation, as WhatsApp does
 			}
 		});
 	}
@@ -1042,6 +1115,11 @@ class WabaInbox {
 	// ---------------------------------------------------------------- list
 
 	refresh_counts() {
+		if (!this.list) {
+			// docked window: only the sidebar count follows what was just read
+			if (window.waba_alerts && window.waba_alerts.refresh_unread) window.waba_alerts.refresh_unread();
+			return Promise.resolve();
+		}
 		frappe
 			.call({ method: "waba.api.inbox.summary", args: { number: this.number || null, scope: this.list.scope }, silent: true })
 			.then((r) => {
@@ -1049,10 +1127,12 @@ class WabaInbox {
 				this.list.set_counts(counts);
 				this.toolbar.set_available(counts.available);
 				this.page_can_oversee = !!counts.can_oversee;
+				if (window.waba_alerts && window.waba_alerts.refresh_unread) window.waba_alerts.refresh_unread(); // the sidebar count follows what was just read
 			});
 	}
 
 	load_list(reset = true) {
+		if (!this.list) return Promise.resolve();
 		const start = reset ? 0 : this.list.rows.length;
 		return frappe
 			.call({
@@ -1073,8 +1153,8 @@ class WabaInbox {
 		const changed = this.current !== name;
 		this.current = name;
 		this.publish_state();
-		this.$panels.addClass("show-thread");
-		this.$shell.addClass("thread-open");
+		if (this.$panels) this.$panels.addClass("show-thread");
+		if (this.$shell) this.$shell.addClass("thread-open");
 		return frappe
 			.call({
 				method: "waba.api.inbox.thread",
@@ -1089,7 +1169,7 @@ class WabaInbox {
 			.then((r) => {
 				if (!r || !r.message || this.current !== name) return; // another conversation was opened meanwhile, or no access
 				this.thread.show(r.message, { stick: changed });
-				this.list.select(name);
+				if (this.list) this.list.select(name);
 				if (r.message.conversation.unread_count > 0) this.mark_read(name);
 			});
 	}
@@ -1105,16 +1185,16 @@ class WabaInbox {
 	close_thread() {
 		this.current = null;
 		this.publish_state();
-		this.$panels.removeClass("show-thread");
-		this.$shell.removeClass("thread-open");
+		if (this.$panels) this.$panels.removeClass("show-thread");
+		if (this.$shell) this.$shell.removeClass("thread-open");
 		this.thread.placeholder();
-		this.list.select(null);
+		if (this.list) this.list.select(null);
 	}
 
 	mark_read(name) {
 		return frappe.call({ method: "waba.api.send.mark_read", args: { conversation: name }, silent: true }).then(() => {
-			this.list.clear_unread(name);
-			this.list.select(this.current);
+			if (this.list) this.list.clear_unread(name);
+			if (this.list) this.list.select(this.current);
 			this.refresh_counts();
 		});
 	}
@@ -1138,9 +1218,10 @@ class WabaInbox {
 		if (c.customer_phone) {
 			items.push({ icon: "copy", label: __("Copy phone number"), run: () => frappe.utils.copy_to_clipboard(c.customer_phone) });
 		}
+		if (c.can_unassign) items.push({ icon: "transfer", label: __("Return to waiting list..."), run: () => this.unassign_dialog() });
 		items.push({ icon: "clock", label: __("Remind me..."), run: () => this.remind_dialog() });
 		items.push({ icon: "bell", label: __("My reminders"), run: () => this.reminders_dialog() });
-		items.push({ icon: "search", label: __("Search in conversation"), run: () => this.thread.open_search() });
+		items.push({ icon: "search", label: __("Search in conversation (Ctrl+F)"), run: () => this.thread.open_search() });
 		items.push({ icon: "external", label: __("Open conversation record"), run: () => frappe.set_route("Form", "Waba Conversation", c.name) });
 		const alerts = window.waba_alerts;
 		if (alerts) {
@@ -1156,7 +1237,7 @@ class WabaInbox {
 		const $menu = $(`<div class="waba-pop waba-menu" style="position:fixed"></div>`).html(
 			items.map((i, n) => `<button class="waba-pop-item" data-n="${n}">${WabaLib.icon(i.icon, 16)}<span>${waba_e(i.label)}</span></button>`).join("")
 		);
-		this.$shell.append($menu);
+		(this.$shell || this.dock.$el).append($menu);
 		const rect = $anchor[0].getBoundingClientRect();
 		$menu.css({ top: rect.bottom + 6, left: Math.max(8, rect.right - 240), minWidth: 240 });
 		$menu.find(".waba-pop-item").on("click", (ev) => {
@@ -1267,6 +1348,41 @@ class WabaInbox {
 		});
 	}
 
+	take_over_from_bot() {
+		const c = this.conversation();
+		if (!c) return;
+		frappe.confirm(__("Take this chat over from the bot? The bot stops and the chat becomes yours."), () => {
+			frappe.call({ method: "waba.api.inbox.take_over_from_bot", args: { conversation: c.name }, freeze: true }).then(() => {
+				frappe.show_alert({ message: __("You have the chat now."), indicator: "green" }, 4);
+				this.refresh();
+				this.open_thread(c.name);
+			});
+		});
+	}
+
+	unassign_dialog() {
+		const c = this.conversation();
+		if (!c) return;
+		const dialog = new frappe.ui.Dialog({
+			title: __("Return {0} to the waiting list", [c.customer_label]),
+			fields: [
+				{ fieldtype: "HTML", fieldname: "info", options: `<div class="text-muted small">${__("Nobody will have it. Routing leaves it alone until a Team Lead hands it to someone with Transfer.")}</div>` },
+				{ fieldname: "note", label: __("Why?"), fieldtype: "Small Text", reqd: 1, description: __("Only your team sees it.") },
+			],
+			primary_action_label: __("Return to waiting list"),
+			primary_action: (values) => {
+				dialog.hide();
+				frappe.call({ method: "waba.api.inbox.unassign", args: { conversation: c.name, note: values.note } }).then(() => {
+					frappe.show_alert({ message: __("Returned to the waiting list."), indicator: "orange" }, 4);
+					this.open_thread(c.name, { quiet: true });
+					this.load_list();
+					this.refresh_counts();
+				});
+			},
+		});
+		dialog.show();
+	}
+
 	transfer_dialog() {
 		const c = this.conversation();
 		if (!c) return;
@@ -1316,12 +1432,47 @@ class WabaInbox {
 			.call({ method: `waba.api.send.${method}`, args: { conversation: this.current, ...args }, freeze: false })
 			.then((r) => {
 				const out = r.message || {};
+				if (out.blocked) return this.privacy_dialog(out, method, args); // sensitive details: nothing was sent
 				if (out.error) frappe.msgprint({ title: __("Not sent"), message: out.error, indicator: "red" });
 				this.open_thread(this.current, { quiet: true });
 				this.load_list();
 				return !!out.ok;
 			})
 			.catch(() => false);
+	}
+
+	/** The server stopped a message because it looks like it holds sensitive details (Aadhaar, PAN, card, bank account, UPI id,
+	 * a one-time code). An agent is told why. A Team Lead or admin may send it anyway with a reason, which is logged. */
+	privacy_dialog(out, method, args) {
+		const found = (out.found || []).map((f) => `<li>${waba_e(f.label)} <span class="text-muted">(${waba_e(f.sample)})</span></li>`).join("");
+		const note = out.can_override
+			? __("It was not sent. If it really must go, say why. The reason is logged with your name.")
+			: __("It was not sent. Please do not share these details on WhatsApp. If they really must be sent, ask a Team Lead.");
+		this.open_thread(this.current, { quiet: true }); // the log wrote a note in the chat
+		return new Promise((resolve) => {
+			if (!out.can_override) {
+				frappe.msgprint({ title: __("Not sent: sensitive details"), message: `<p>${waba_e(__("This message looks like it contains:"))}</p><ul>${found}</ul><p>${waba_e(note)}</p>`, indicator: "red" });
+				return resolve(false);
+			}
+			const dialog = new frappe.ui.Dialog({
+				title: __("Sensitive details in this message"),
+				fields: [
+					{ fieldtype: "HTML", fieldname: "info", options: `<p>${waba_e(__("This message looks like it contains:"))}</p><ul>${found}</ul><p class="text-muted">${waba_e(note)}</p>` },
+					{ fieldname: "reason", label: __("Why does this need to be sent?"), fieldtype: "Small Text", reqd: 1 },
+				],
+				primary_action_label: __("Send anyway"),
+				primary_action: (v) => {
+					dialog.hide();
+					this.send(method, { ...args, override_reason: v.reason }).then(resolve);
+				},
+				secondary_action_label: __("Do not send"),
+				secondary_action: () => {
+					dialog.hide();
+					resolve(false);
+				},
+			});
+			dialog.show();
+		});
 	}
 
 	// ---- files: device upload with a preview, ERP documents, the shared library
@@ -1482,7 +1633,7 @@ class WabaInbox {
 		frappe.call({ method: "waba.api.send.templates_for", args: { conversation: c.name } }).then((r) => {
 			const templates = r.message || [];
 			if (!templates.length) {
-				frappe.msgprint(__("No approved template found. Press Meta, Sync templates on the WhatsApp Account first."));
+				frappe.msgprint(__("No approved template is available for this number. Press Meta, Sync templates on the WhatsApp Account, or write one under Setup > Templates. (Utility always; Marketing only while Waba Settings allows it.)"));
 				return;
 			}
 			load_template_dialog().then(() =>

@@ -2,7 +2,7 @@
 
 import unittest
 
-from waba.rules.phone import e164, from_typed, wa_digits
+from waba.rules.phone import e164, from_typed, is_mobile_like, wa_digits
 
 
 class TestE164(unittest.TestCase):
@@ -58,3 +58,21 @@ class TestFromTyped(unittest.TestCase):
 	def test_another_default_country_is_not_checked_for_a_mobile_prefix(self):
 		self.assertEqual(self.from_typed("7712345670", default_country_code="94"), "+947712345670")
 		self.assertEqual(self.from_typed("+94 77 123 4567", default_country_code="91"), "+94771234567")
+
+
+class TestIsMobileLike(unittest.TestCase):
+	def test_indian_mobiles(self):
+		for key in ("+919811111111", "+916000000000", "+917999999999", "+918123456789"):
+			self.assertTrue(is_mobile_like(key), key)
+
+	def test_indian_landlines_and_short_numbers_are_not(self):
+		for key in ("+912223456789", "+911123456789", "+9122234567", "+9198111111", "+9198111111111"):
+			self.assertFalse(is_mobile_like(key), key)
+
+	def test_other_countries_are_not_judged(self):
+		self.assertTrue(is_mobile_like("+14155550123"))
+		self.assertTrue(is_mobile_like("+442071838750"))
+
+	def test_nothing_is_not_a_mobile(self):
+		self.assertFalse(is_mobile_like(None))
+		self.assertFalse(is_mobile_like(""))

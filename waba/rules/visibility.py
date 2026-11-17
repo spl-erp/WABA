@@ -1,21 +1,23 @@
 """Who may see which conversation. Pure rules: no database, fully testable offline.
 
 The organisation is a tree of teams ("Common" at the top, departments under it, sub-teams under those). A team owns
-the WhatsApp numbers its people work on and has members, each an Agent or a Lead. The rule is "each level sees itself
+the WhatsApp numbers its people work on and has members, each an Agent or a Team Lead. The rule is "each level sees itself
 and everything below it, never sideways":
 
-  Everyone                 System Manager and Waba Admin; a Lead of a top-level team ("Common")
-  Lead of a team           conversations assigned to anyone in that team or below it, and every conversation
-                           (assigned or not) on the numbers owned by that team or below it
+  Everyone                 System Manager and Waba Admin; a Team Lead of a top-level team ("Common")
+  Team Lead of a team      conversations assigned to anyone in that team or below it, and every conversation
+                           (assigned or not) on a number that only that team or teams below it use. On a number
+                           shared with another department, only what is assigned inside their own branch, plus
+                           what is still unassigned.
   Agent                    only the conversations assigned to them
   A number set to "All conversations on this number" also shows all of it to the agents who work that number
 
-An unassigned conversation is therefore seen by the Leads above its number and nobody else.
+An unassigned conversation is therefore seen by the Team Leads above its number and nobody else.
 """
 
 from dataclasses import dataclass, field
 
-LEAD = "Lead"
+LEAD = "Team Lead"
 AGENT = "Agent"
 SHOW_ALL_ON_NUMBER = "All conversations on this number"
 
@@ -28,7 +30,8 @@ class Scope:
 	everything: bool = False
 	users: frozenset = field(default_factory=frozenset)
 	numbers: frozenset = field(default_factory=frozenset)
-	lead_numbers: frozenset = field(default_factory=frozenset)  # the numbers the person oversees as a Lead (shows Unassigned)
+	lead_numbers: frozenset = field(default_factory=frozenset)  # the numbers the person oversees as a Team Lead (shows Unassigned)
+	exclusive_numbers: frozenset = field(default_factory=frozenset)  # the part of lead_numbers no other branch uses (shows everything on it)
 
 	@property
 	def is_lead(self):
@@ -64,12 +67,21 @@ def is_root(team, parents):
 	return not parents.get(team)
 
 
+def number_teams(team_numbers):
+	"""{number: {teams that use it}} from {team: [numbers]}."""
+	users = {}
+	for team, numbers in (team_numbers or {}).items():
+		for number in numbers:
+			users.setdefault(number, set()).add(team)
+	return users
+
+
 def visible_scope(user, *, everyone=False, parents=None, members=None, team_numbers=None, agent_numbers=None, number_visibility=None):
 	"""The Scope of `user`.
 
-	everyone          True for System Manager / Waba Admin
+	everyone          True for Waba Admin
 	parents           {team: parent team or None}
-	members           [(team, user, role)] with role "Lead" or "Agent"
+	members           [(team, user, role)] with role "Team Lead" or "Agent"
 	team_numbers      {team: [number, ...]}
 	agent_numbers     the numbers `user` works as an agent (their Agent Access rows)
 	number_visibility {number: "Own conversations only" | "All conversations on this number"}
@@ -79,26 +91,50 @@ def visible_scope(user, *, everyone=False, parents=None, members=None, team_numb
 	if everyone:
 		return Scope(me=user, everything=True)
 
-	users, numbers, lead_numbers = {user}, set(), set()
+	users, lead_numbers, exclusive, branch_teams = {user}, set(), set(), set()
 	for team, member, role in members:
 		if member != user or role != LEAD:
 			continue
 		if is_root(team, parents):
 			return Scope(me=user, everything=True)
 		for node in subtree(team, parents):
+			branch_teams.add(node)
 			users.update(m for t, m, _ in members if t == node)
 			lead_numbers.update(team_numbers.get(node, []))
-	numbers.update(lead_numbers)
+	sharing = number_teams(team_numbers)
+	for number in lead_numbers:
+		if sharing.get(number, set()) <= branch_teams:
+			exclusive.add(number)
+	numbers = set(exclusive)
 	for number in agent_numbers or []:
 		if number_visibility.get(number) == SHOW_ALL_ON_NUMBER:
 			numbers.add(number)
-	return Scope(me=user, users=frozenset(users), numbers=frozenset(numbers), lead_numbers=frozenset(lead_numbers))
+	return Scope(
+		me=user,
+		users=frozenset(users),
+		numbers=frozenset(numbers),
+		lead_numbers=frozenset(lead_numbers),
+		exclusive_numbers=frozenset(exclusive),
+	)
+
+
+def visible_numbers(scope, agent_numbers, all_numbers):
+	"""The business numbers `scope` may see: every number for an admin; otherwise the numbers the person works as an agent
+	(their Agent Access rows, derived from their team) plus the numbers their team, or a team below it, owns. Only numbers
+	in `all_numbers` count, so a number that no longer exists is never listed."""
+	everything = list(all_numbers)
+	if scope.everything:
+		return everything
+	mine = set(agent_numbers or ()) | set(scope.numbers) | set(scope.lead_numbers)
+	return [n for n in everything if n in mine]
 
 
 def can_see(scope, assigned_to, number):
 	if scope.everything:
 		return True
-	return (bool(assigned_to) and assigned_to in scope.users) or number in scope.numbers
+	if assigned_to:
+		return assigned_to in scope.users or number in scope.numbers
+	return number in scope.numbers or number in scope.lead_numbers  # what nobody has yet is seen by the Team Leads over its number
 
 
 def can_see_unassigned(scope, number):
@@ -106,17 +142,38 @@ def can_see_unassigned(scope, number):
 	return scope.everything or number in scope.lead_numbers
 
 
+def can_manage(scope, assigned_to, number):
+	"""May this person hand the conversation on, return it to the waiting list or close it: an admin, its assignee, a Team Lead
+	over its assignee, or a Team Lead over the number when nobody has it (or when no other branch uses the number)."""
+	if scope.everything or (bool(assigned_to) and assigned_to == scope.me):
+		return True
+	if assigned_to:
+		return (assigned_to in scope.users and scope.is_lead) or number in scope.exclusive_numbers
+	return number in scope.lead_numbers
+
+
 def overseers(assigned_to, number, *, parents, members, team_numbers):
 	"""Users (other than the assignee) who may see a conversation, so a live update can be sent to just them.
 
-	A Lead sees it if it is on a number owned by their team or below, or assigned to someone in their team or below.
-	Top-level Leads see everything. (Administrators are added by the caller: they are not in the tree.)
+	A Team Lead is told when the conversation is assigned to someone in their branch, when nobody has it yet and the number is
+	used inside their branch, or when only their branch uses the number. Top-level Team Leads see everything.
+	(Administrators are added by the caller: they are not in the tree.)
 	"""
-	owner_teams = {t for t, nums in team_numbers.items() if number in nums}
+	using = number_teams(team_numbers).get(number, set())
 	assignee_teams = {t for t, m, _ in members if m == assigned_to} if assigned_to else set()
-	related = set(owner_teams) | assignee_teams
-	above = set()
-	for team in related:
-		above.update(ancestors(team, parents))
 	roots = {t for t in parents if is_root(t, parents)}
-	return {m for t, m, role in members if role == LEAD and (t in above or t in roots)} - {assigned_to}
+	told = set()
+	for team, member, role in members:
+		if role != LEAD:
+			continue
+		if team in roots:
+			told.add(member)
+			continue
+		branch = subtree(team, parents)
+		if assignee_teams & branch:
+			told.add(member)
+		elif not assigned_to and using & branch:
+			told.add(member)
+		elif using and using <= branch:
+			told.add(member)
+	return told - {assigned_to}

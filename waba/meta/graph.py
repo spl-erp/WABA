@@ -23,17 +23,22 @@ MAX_PAGES = 10
 ACCOUNT_FIELDS = "name,currency,timezone_id,account_review_status,business_verification_status"
 NUMBER_FIELDS = "id,display_phone_number,verified_name,quality_rating,name_status,status,messaging_limit_tier"
 NUMBER_FIELDS_MINIMAL = "id,display_phone_number,verified_name"
+NUMBER_STATE_FIELDS = "id,display_phone_number,verified_name,quality_rating,name_status,status,code_verification_status"
+NUMBER_STATE_MINIMAL = "id,display_phone_number,verified_name,status,code_verification_status"
 
 
 class GraphError(Exception):
-	def __init__(self, message, code=None, http_status=None):
+	def __init__(self, message, code=None, http_status=None, subcode=None, user_message=None, user_title=None):
 		super().__init__(message)
 		self.message = message
 		self.code = code
 		self.http_status = http_status
+		self.subcode = subcode
+		self.user_message = user_message  # Meta's own sentence for a person, when it gives one (template refusals do)
+		self.user_title = user_title
 
 
-def call(token, method, path, version=None, params=None, data=None, json=None, http=None, files=None):
+def call(token, method, path, version=None, params=None, data=None, json=None, http=None, files=None, headers=None):
 	url = f"{GRAPH_HOST}/{version or DEFAULT_API_VERSION}/{path.lstrip('/')}"
 	extra = {"files": files} if files else {}  # only passed for an upload, so simple fakes need not accept it
 	try:
@@ -43,8 +48,8 @@ def call(token, method, path, version=None, params=None, data=None, json=None, h
 			params=params,
 			data=data,
 			json=json,
-			headers={"Authorization": f"Bearer {token}"},
-			timeout=UPLOAD_TIMEOUT if files else TIMEOUT,
+			headers={"Authorization": f"Bearer {token}", **(headers or {})},
+			timeout=UPLOAD_TIMEOUT if files or (isinstance(data, (bytes, bytearray)) and data) else TIMEOUT,
 			**extra,
 		)
 	except requests.RequestException as e:
@@ -59,6 +64,9 @@ def call(token, method, path, version=None, params=None, data=None, json=None, h
 			error.get("message") or f"Meta answered HTTP {response.status_code}.",
 			code=error.get("code"),
 			http_status=response.status_code,
+			subcode=error.get("error_subcode"),
+			user_message=error.get("error_user_msg"),
+			user_title=error.get("error_user_title"),
 		)
 	return body
 
@@ -117,6 +125,9 @@ def explain(error):
 	from waba.rules import errors
 
 	action, meaning = errors.classify(error.code)
+	if getattr(error, "user_message", None):  # Meta wrote this for a person: it is the clearest thing to show
+		title = f"{error.user_title}: " if getattr(error, "user_title", None) else ""
+		return f"{title}{error.user_message}"
 	if error.code == 190:
 		return "Meta rejected the access token (expired or revoked). Create a new system-user token and save it on the Portfolio."
 	if error.code == 100:
@@ -236,3 +247,72 @@ def template_values(item):
 		"footer_text": (parts.get("FOOTER") or {}).get("text"),
 		"button_count": len(buttons),
 	}
+
+
+# ------------------------------------------------------------------------------------------------ writing templates
+# Field names and shapes follow Meta's template reference as of Oct 2026 and are UNVERIFIED against live Meta.
+
+
+def create_template(token, waba_id, payload, version=None, http=None):
+	"""POST a new template for review. Returns Meta's answer: {"id", "status", "category"}."""
+	return call(token, "POST", f"{waba_id}/message_templates", version, json=payload, http=http)
+
+
+def edit_template(token, template_id, components, category=None, version=None, http=None):
+	"""POST new components for an existing template (Meta limits how often a template may be edited)."""
+	body = {"components": components}
+	if category:
+		body["category"] = category
+	return call(token, "POST", str(template_id), version, json=body, http=http)
+
+
+def delete_template(token, waba_id, name, template_id=None, version=None, http=None):
+	"""DELETE a template by name (every language of that name), or one language when its id is given."""
+	params = {"name": name}
+	if template_id:
+		params["hsm_id"] = str(template_id)
+	return call(token, "DELETE", f"{waba_id}/message_templates", version, params=params, http=http)
+
+
+def upload_sample(token, app_id, filename, content, mime, version=None, http=None):
+	"""Meta's resumable upload for the sample file of a media header. Returns the handle ("4::...") a template refers to.
+	Two steps: open a session on the app, then send the bytes (this second call authorises with OAuth, not Bearer)."""
+	session = call(
+		token, "POST", f"{app_id}/uploads", version,
+		params={"file_name": filename, "file_length": len(content), "file_type": mime}, http=http,
+	)
+	upload_id = session.get("id") if isinstance(session, dict) else None
+	if not upload_id:
+		raise GraphError("Meta did not open an upload for the sample file.")
+	done = call(token, "POST", str(upload_id), version, data=bytes(content), headers={"Authorization": f"OAuth {token}", "file_offset": "0"}, http=http)
+	handle = done.get("h") if isinstance(done, dict) else None
+	if not handle:
+		raise GraphError("Meta did not return a handle for the sample file.")
+	return str(handle)
+
+
+# --- registering a phone number (verification code, then the two-step PIN). The PIN and the code are sent to Meta and never kept here.
+
+
+def number_state(token, phone_number_id, version=None, http=None):
+	"""One number's verification and registration state (a read)."""
+	try:
+		return call(token, "GET", str(phone_number_id), version, params={"fields": NUMBER_STATE_FIELDS}, http=http)
+	except GraphError as e:
+		if e.code != 100:
+			raise
+		return call(token, "GET", str(phone_number_id), version, params={"fields": NUMBER_STATE_MINIMAL}, http=http)
+
+
+def request_code(token, phone_number_id, method="SMS", language="en_US", version=None, http=None):
+	"""Ask Meta to send a one-time code to the number by SMS or voice call."""
+	return call(token, "POST", f"{phone_number_id}/request_code", version, json={"code_method": method, "language": language}, http=http)
+
+
+def verify_code(token, phone_number_id, code, version=None, http=None):
+	return call(token, "POST", f"{phone_number_id}/verify_code", version, json={"code": code}, http=http)
+
+
+def register_number(token, phone_number_id, pin, version=None, http=None):
+	"""Register the number for the Cloud API with a 6-digit two-step PIN. The PIN is needed later to change or delete the number."""
+	return call(token, "POST", f"{phone_number_id}/register", version, json={"messaging_product": "whatsapp", "pin": pin}, http=http)

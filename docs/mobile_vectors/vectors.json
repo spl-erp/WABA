@@ -1,0 +1,698 @@
+{
+ "_about": "Generated from waba_inbox_lib.js. Each group: a function name, its inputs and the expected output.",
+ "time_left": [
+  {
+   "expires": "2026-11-12T10:00:00Z",
+   "now": "2026-11-12T08:00:00Z",
+   "expected": "2 h 0 m"
+  },
+  {
+   "expires": "2026-11-12T08:00:30Z",
+   "now": "2026-11-12T08:00:00Z",
+   "expected": "0 h 0 m"
+  },
+  {
+   "expires": "2026-11-12T08:00:00Z",
+   "now": "2026-11-12T08:00:00Z",
+   "expected": null
+  },
+  {
+   "expires": "2026-11-11T08:00:00Z",
+   "now": "2026-11-12T08:00:00Z",
+   "expected": null
+  },
+  {
+   "expires": "2026-11-13T07:59:00Z",
+   "now": "2026-11-12T08:00:00Z",
+   "expected": "23 h 59 m"
+  }
+ ],
+ "wa_format": [
+  {
+   "input": "plain text",
+   "expected": "plain text"
+  },
+  {
+   "input": "*bold* and _italic_ and ~gone~",
+   "expected": "<b>bold</b> and <i>italic</i> and <s>gone</s>"
+  },
+  {
+   "input": "```code```",
+   "expected": "<code>code</code>"
+  },
+  {
+   "input": "5 - 6 pm, a*b*c and snake_case_name",
+   "expected": "5 - 6 pm, a*b*c and snake_case_name"
+  },
+  {
+   "input": "*not closed",
+   "expected": "*not closed"
+  },
+  {
+   "input": "price *rs 500* only",
+   "expected": "price <b>rs 500</b> only"
+  },
+  {
+   "input": "a link <a href=\"https://x.in/a_b_c\">https://x.in/a_b_c</a> *stays*",
+   "expected": "a link <a href=\"https://x.in/a_b_c\">https://x.in/a_b_c</a> <b>stays</b>"
+  },
+  {
+   "input": "(_inside brackets_)",
+   "expected": "(<i>inside brackets</i>)"
+  }
+ ],
+ "quick_replies_filter": [
+  {
+   "query": "",
+   "list": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ],
+   "expected": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ]
+  },
+  {
+   "query": "thank",
+   "list": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ],
+   "expected": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ]
+  },
+  {
+   "query": "PRICE",
+   "list": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ],
+   "expected": [
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    }
+   ]
+  },
+  {
+   "query": "attached",
+   "list": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ],
+   "expected": [
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    }
+   ]
+  },
+  {
+   "query": "xyz",
+   "list": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ],
+   "expected": []
+  },
+  {
+   "query": "  hours ",
+   "list": [
+    {
+     "title": "Thanks",
+     "body": "Thank you for contacting us."
+    },
+    {
+     "title": "Price",
+     "body": "Our price list is attached."
+    },
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ],
+   "expected": [
+    {
+     "title": "Hours",
+     "body": "We are open 9 to 6, thanks."
+    }
+   ]
+  }
+ ],
+ "fill_template": [
+  {
+   "text": "Hello {{1}}, your order {{2}} is ready.",
+   "component": "body",
+   "values": {
+    "body.1": "Asha",
+    "body.2": "SO-12"
+   },
+   "expected": "Hello Asha, your order SO-12 is ready."
+  },
+  {
+   "text": "Hello {{1}}, your order {{2}} is ready.",
+   "component": "body",
+   "values": {
+    "body.1": "Asha"
+   },
+   "expected": "Hello Asha, your order {{2}} is ready."
+  },
+  {
+   "text": "Hi {{ name }}",
+   "component": "body",
+   "values": {
+    "body.name": "  Ravi  "
+   },
+   "expected": "Hi Ravi"
+  },
+  {
+   "text": "Header {{1}}",
+   "component": "header",
+   "values": {
+    "body.1": "wrong component"
+   },
+   "expected": "Header {{1}}"
+  },
+  {
+   "text": "No variables",
+   "component": "body",
+   "values": {},
+   "expected": "No variables"
+  }
+ ],
+ "missing_slots": [
+  {
+   "slots": [
+    {
+     "id": "body.1"
+    },
+    {
+     "id": "body.2"
+    },
+    {
+     "id": "header.1"
+    }
+   ],
+   "values": {},
+   "expected": [
+    "body.1",
+    "body.2",
+    "header.1"
+   ]
+  },
+  {
+   "slots": [
+    {
+     "id": "body.1"
+    },
+    {
+     "id": "body.2"
+    },
+    {
+     "id": "header.1"
+    }
+   ],
+   "values": {
+    "body.1": "x",
+    "body.2": " ",
+    "header.1": {
+     "file": "a.png"
+    }
+   },
+   "expected": [
+    "body.2"
+   ]
+  },
+  {
+   "slots": [
+    {
+     "id": "body.1"
+    },
+    {
+     "id": "body.2"
+    },
+    {
+     "id": "header.1"
+    }
+   ],
+   "values": {
+    "body.1": "x",
+    "body.2": "y",
+    "header.1": {
+     "shared_file": "F-1"
+    }
+   },
+   "expected": []
+  },
+  {
+   "slots": [
+    {
+     "id": "body.1"
+    },
+    {
+     "id": "body.2"
+    },
+    {
+     "id": "header.1"
+    }
+   ],
+   "values": {
+    "header.1": {}
+   },
+   "expected": [
+    "body.1",
+    "body.2",
+    "header.1"
+   ]
+  }
+ ],
+ "first_unread": [
+  {
+   "messages": [
+    {
+     "name": "a",
+     "direction": "In"
+    },
+    {
+     "name": "b",
+     "direction": "Out"
+    },
+    {
+     "name": "c",
+     "direction": "In"
+    },
+    {
+     "name": "d",
+     "direction": "In"
+    },
+    {
+     "name": "e",
+     "direction": "Out"
+    }
+   ],
+   "unread": 0,
+   "expected": null
+  },
+  {
+   "messages": [
+    {
+     "name": "a",
+     "direction": "In"
+    },
+    {
+     "name": "b",
+     "direction": "Out"
+    },
+    {
+     "name": "c",
+     "direction": "In"
+    },
+    {
+     "name": "d",
+     "direction": "In"
+    },
+    {
+     "name": "e",
+     "direction": "Out"
+    }
+   ],
+   "unread": 1,
+   "expected": "d"
+  },
+  {
+   "messages": [
+    {
+     "name": "a",
+     "direction": "In"
+    },
+    {
+     "name": "b",
+     "direction": "Out"
+    },
+    {
+     "name": "c",
+     "direction": "In"
+    },
+    {
+     "name": "d",
+     "direction": "In"
+    },
+    {
+     "name": "e",
+     "direction": "Out"
+    }
+   ],
+   "unread": 2,
+   "expected": "c"
+  },
+  {
+   "messages": [
+    {
+     "name": "a",
+     "direction": "In"
+    },
+    {
+     "name": "b",
+     "direction": "Out"
+    },
+    {
+     "name": "c",
+     "direction": "In"
+    },
+    {
+     "name": "d",
+     "direction": "In"
+    },
+    {
+     "name": "e",
+     "direction": "Out"
+    }
+   ],
+   "unread": 3,
+   "expected": "a"
+  },
+  {
+   "messages": [
+    {
+     "name": "a",
+     "direction": "In"
+    },
+    {
+     "name": "b",
+     "direction": "Out"
+    },
+    {
+     "name": "c",
+     "direction": "In"
+    },
+    {
+     "name": "d",
+     "direction": "In"
+    },
+    {
+     "name": "e",
+     "direction": "Out"
+    }
+   ],
+   "unread": 9,
+   "expected": null
+  }
+ ],
+ "reminder_choices": [
+  {
+   "now": "2026-11-12 12:00:00",
+   "expected": [
+    {
+     "label": "In 2 hours",
+     "value": "2026-11-12 14:00:00"
+    },
+    {
+     "label": "Tomorrow 10:00",
+     "value": "2026-11-13 10:00:00"
+    },
+    {
+     "label": "In 3 days, 10:00",
+     "value": "2026-11-15 10:00:00"
+    },
+    {
+     "label": "Next Monday 10:00",
+     "value": "2026-11-16 10:00:00"
+    }
+   ]
+  },
+  {
+   "now": "2026-11-14 09:30:00",
+   "expected": [
+    {
+     "label": "In 2 hours",
+     "value": "2026-11-14 11:30:00"
+    },
+    {
+     "label": "Tomorrow 10:00",
+     "value": "2026-11-15 10:00:00"
+    },
+    {
+     "label": "In 3 days, 10:00",
+     "value": "2026-11-17 10:00:00"
+    },
+    {
+     "label": "Next Monday 10:00",
+     "value": "2026-11-16 10:00:00"
+    }
+   ]
+  },
+  {
+   "now": "2026-11-15 22:00:00",
+   "expected": [
+    {
+     "label": "In 2 hours",
+     "value": "2026-11-16 00:00:00"
+    },
+    {
+     "label": "Tomorrow 10:00",
+     "value": "2026-11-16 10:00:00"
+    },
+    {
+     "label": "In 3 days, 10:00",
+     "value": "2026-11-18 10:00:00"
+    },
+    {
+     "label": "Next Monday 10:00",
+     "value": "2026-11-16 10:00:00"
+    }
+   ]
+  },
+  {
+   "now": "not a date",
+   "expected": []
+  }
+ ],
+ "check_upload": [
+  {
+   "mime": "image/jpeg",
+   "size": 1000,
+   "expected": {
+    "ok": true,
+    "kind": "image",
+    "message": ""
+   }
+  },
+  {
+   "mime": "image/png",
+   "size": 6291456,
+   "expected": {
+    "ok": false,
+    "kind": "image",
+    "message": "This image is 6.0 MB; WhatsApp accepts at most 5.0 MB."
+   }
+  },
+  {
+   "mime": "application/pdf",
+   "size": 104857600,
+   "expected": {
+    "ok": true,
+    "kind": "document",
+    "message": ""
+   }
+  },
+  {
+   "mime": "application/pdf",
+   "size": 105906176,
+   "expected": {
+    "ok": false,
+    "kind": "document",
+    "message": "This document is 101.0 MB; WhatsApp accepts at most 100.0 MB."
+   }
+  },
+  {
+   "mime": "video/mp4",
+   "size": 0,
+   "expected": {
+    "ok": false,
+    "kind": "video",
+    "message": "The file is empty."
+   }
+  },
+  {
+   "mime": "application/x-msdownload",
+   "size": 10,
+   "expected": {
+    "ok": false,
+    "kind": null,
+    "message": "WhatsApp cannot send this kind of file. Use an image (JPG, PNG), a PDF or Office document, a video (MP4) or an audio file."
+   }
+  },
+  {
+   "mime": "audio/ogg; codecs=opus",
+   "size": 50000,
+   "expected": {
+    "ok": true,
+    "kind": "audio",
+    "message": ""
+   }
+  },
+  {
+   "mime": "image/webp",
+   "size": 409600,
+   "expected": {
+    "ok": true,
+    "kind": "sticker",
+    "message": ""
+   }
+  },
+  {
+   "mime": "image/webp",
+   "size": 614400,
+   "expected": {
+    "ok": false,
+    "kind": "sticker",
+    "message": "This sticker is 600 KB; WhatsApp accepts at most 500 KB."
+   }
+  }
+ ],
+ "human_size": [
+  {
+   "bytes": 0,
+   "expected": "0 B"
+  },
+  {
+   "bytes": 1,
+   "expected": "1 B"
+  },
+  {
+   "bytes": 1023,
+   "expected": "1023 B"
+  },
+  {
+   "bytes": 1024,
+   "expected": "1 KB"
+  },
+  {
+   "bytes": 1500,
+   "expected": "1 KB"
+  },
+  {
+   "bytes": 1048576,
+   "expected": "1.0 MB"
+  },
+  {
+   "bytes": 5542880,
+   "expected": "5.3 MB"
+  }
+ ],
+ "tick_for": [
+  {
+   "status": "Queued",
+   "expected": {
+    "icon": "clock",
+    "tone": "grey",
+    "label": "Sending"
+   }
+  },
+  {
+   "status": "Sent",
+   "expected": {
+    "icon": "check",
+    "tone": "grey",
+    "label": "Sent"
+   }
+  },
+  {
+   "status": "Delivered",
+   "expected": {
+    "icon": "checks",
+    "tone": "grey",
+    "label": "Delivered"
+   }
+  },
+  {
+   "status": "Read",
+   "expected": {
+    "icon": "checks",
+    "tone": "blue",
+    "label": "Read"
+   }
+  },
+  {
+   "status": "Failed",
+   "expected": {
+    "icon": "warning",
+    "tone": "red",
+    "label": "Not delivered"
+   }
+  },
+  {
+   "status": "Unknown",
+   "expected": null
+  }
+ ]
+}

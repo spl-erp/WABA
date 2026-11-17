@@ -48,7 +48,7 @@ frappe.ui.form.on("Waba Conversation", {
 			frappe.call({ method: "waba.api.send.templates_for", args: { conversation: frm.doc.name } }).then((r) => {
 				const templates = r.message || [];
 				if (!templates.length) {
-					frappe.msgprint(__("No approved template found. Press Meta, Sync templates on the WhatsApp Account first."));
+					frappe.msgprint(__("No approved template is available for this number. Press Meta, Sync templates on the WhatsApp Account, or write one under Setup > Templates. (Utility always; Marketing only while Waba Settings allows it.)"));
 					return;
 				}
 				load_dialog().then(() =>
