@@ -93,6 +93,7 @@ def store_messages(value, number, event):
 			conversation.reload()
 			_update_conversation(conversation, m, sent_at, portfolio)
 			counts["stored"] += 1
+			_call_permission(conversation, m)
 			_keyword(conversation, m["body"])
 			_campaign_reply(conversation)
 			_bot(conversation, stored.name)  # after STOP / START (an opted-out customer is never answered) and before routing (a chat in a bot's hands is not handed to an agent)
@@ -182,6 +183,18 @@ def _edit_echo(m):
 	body = coexistence.revoked_body(name.body) if m["action"] == "revoke" else m["body"]
 	frappe.db.set_value("Waba Message", name.name, {"body": body, "preview": inbound.preview(body)}, update_modified=False)
 	return 1
+
+
+def _call_permission(conversation, m):
+	"""The customer allowed or declined WhatsApp calls (their reply to our request). Never loses the stored message."""
+	if not m.get("permission_reply"):
+		return
+	try:
+		from waba import calls
+
+		calls.apply_permission_reply(conversation.name, m["permission_reply"])
+	except Exception:
+		frappe.log_error(title="Waba: saving a call permission reply failed")
 
 
 def _keyword(conversation, body):

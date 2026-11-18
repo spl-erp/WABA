@@ -9,7 +9,9 @@
   "max_open",
   "rep_code",
   "languages",
-  "may_send_templates"
+  "may_send_templates",
+  "may_take_calls",
+  "may_make_calls"
  ],
  "fields": [
   {
@@ -56,11 +58,25 @@
    "fieldtype": "Check",
    "label": "May send templates",
    "default": "1"
+  },
+  {
+   "fieldname": "may_take_calls",
+   "fieldtype": "Check",
+   "label": "May take WhatsApp calls",
+   "default": "0",
+   "description": "This person's browser rings when a customer calls a number of this team (Waba Settings > WhatsApp calls must be on)."
+  },
+  {
+   "fieldname": "may_make_calls",
+   "fieldtype": "Check",
+   "label": "May place WhatsApp calls",
+   "default": "0",
+   "description": "Shows the Call button in the chat for this person. Each customer must have allowed calls first, and outgoing calls are billed per minute."
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-03 12:00:00.000000",
+ "modified": "2026-11-19 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Team Member",

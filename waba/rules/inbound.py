@@ -63,10 +63,20 @@ def parse_messages(value):
 				"type": kind,
 				"body": body_text(message, kind),
 				"reply_to": (message.get("context") or {}).get("id") if isinstance(message.get("context"), dict) else None,
+				"permission_reply": _permission_reply(message, kind),
 				**details(message, kind),
 			}
 		)
 	return out
+
+
+def _permission_reply(message, kind):
+	"""The customer's answer to a WhatsApp call request (an interactive reply), or None."""
+	if kind != "interactive":
+		return None
+	from waba.rules import calls
+
+	return calls.parse_permission_reply(message)
 
 
 def parse_echoes(value):
@@ -164,6 +174,10 @@ def body_text(message, kind):
 	if kind == "button":
 		return part.get("text") or "[button]"
 	if kind == "interactive":
+		if part.get("type") == "call_permission_reply":
+			from waba.rules import calls
+
+			return calls.permission_reply_text(calls.parse_permission_reply(message))
 		reply = part.get("button_reply") or part.get("list_reply") or {}
 		return reply.get("title") or "[interactive]"
 	if kind == "location":

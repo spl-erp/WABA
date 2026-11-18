@@ -175,10 +175,10 @@ def has_team_permission(doc, ptype=None, user=None):
 
 
 def member_settings():
-	return {
-		m.user: {"max_open": m.max_open, "rep_code": m.rep_code, "languages": m.languages, "may_send_templates": m.may_send_templates}
-		for m in frappe.get_all("Waba Team Member", fields=["user", "max_open", "rep_code", "languages", "may_send_templates"], parent_doctype="Waba Team")
-	}
+	fields = ["user", *team_setup.SETTINGS]
+	meta = frappe.get_meta("Waba Team Member")
+	fields = [f for f in fields if f == "user" or meta.has_field(f)]  # a new field is only read once the migrate has added it
+	return {m.user: {k: m.get(k) for k in fields if k != "user"} for m in frappe.get_all("Waba Team Member", fields=fields, parent_doctype="Waba Team")}
 
 
 def used_numbers():
@@ -201,6 +201,8 @@ def sync_number_agents(number):
 	"""Rewrite the Agent list of `number` from the teams. Returns the number of people. Written straight to the table, so the
 	Number's own checks do not run (they would refuse a half-finished setup)."""
 	rows = derived_agents(number)
+	access_meta = frappe.get_meta("Waba Agent Access")
+	rows = [{k: v for k, v in row.items() if access_meta.has_field(k) or k in ("user", "role")} for row in rows]  # before the migrate the new call flags are left out
 	frappe.db.delete("Waba Agent Access", {"parent": number, "parenttype": "Waba Number"})
 	for idx, row in enumerate(rows, start=1):
 		frappe.get_doc(

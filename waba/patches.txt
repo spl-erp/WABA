@@ -6,3 +6,4 @@
 # Patches added in this section will be executed after doctypes are migrated
 waba.patches.v0_1.set_origin_person
 waba.patches.v0_1.rename_lead_role
+waba.patches.v0_1.default_call_listen_only

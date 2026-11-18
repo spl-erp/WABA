@@ -1,0 +1,266 @@
+{
+ "actions": [],
+ "creation": "2026-11-18 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "call_id",
+  "waba_number",
+  "direction",
+  "status",
+  "column_break_wc1",
+  "caller_phone",
+  "caller_bsuid",
+  "caller_name",
+  "party_doctype",
+  "party",
+  "conversation",
+  "times_section",
+  "started_at",
+  "answered_at",
+  "ended_at",
+  "duration",
+  "column_break_wc2",
+  "answered_by",
+  "ring_recipients",
+  "started_by",
+  "recording_section",
+  "recording_status",
+  "recording_file",
+  "recording_error",
+  "log_section",
+  "call_log",
+  "meta_status",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "call_id",
+   "fieldtype": "Data",
+   "label": "Meta call ID",
+   "reqd": 1,
+   "unique": 1,
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "waba_number",
+   "fieldtype": "Link",
+   "label": "Number",
+   "options": "Waba Number",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "label": "Direction",
+   "options": "Incoming\nOutgoing",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Ringing\nAnswered\nCompleted\nMissed\nNo answer\nRejected\nFailed\nCancelled",
+   "default": "Ringing",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "column_break_wc1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "caller_phone",
+   "fieldtype": "Data",
+   "label": "Customer phone",
+   "read_only": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "caller_bsuid",
+   "fieldtype": "Data",
+   "label": "Customer user ID",
+   "read_only": 1
+  },
+  {
+   "fieldname": "caller_name",
+   "fieldtype": "Data",
+   "label": "Customer name (WhatsApp profile)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party_doctype",
+   "fieldtype": "Link",
+   "label": "Record type",
+   "options": "DocType",
+   "read_only": 1
+  },
+  {
+   "fieldname": "party",
+   "fieldtype": "Dynamic Link",
+   "label": "Record",
+   "options": "party_doctype",
+   "read_only": 1
+  },
+  {
+   "fieldname": "conversation",
+   "fieldtype": "Link",
+   "label": "Conversation",
+   "options": "Waba Conversation",
+   "read_only": 1,
+   "search_index": 1,
+   "description": "Empty for a call from a number nobody knows: no chat is opened for it."
+  },
+  {
+   "fieldname": "times_section",
+   "fieldtype": "Section Break",
+   "label": "Times"
+  },
+  {
+   "fieldname": "started_at",
+   "fieldtype": "Datetime",
+   "label": "Started",
+   "read_only": 1
+  },
+  {
+   "fieldname": "answered_at",
+   "fieldtype": "Datetime",
+   "label": "Answered",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ended_at",
+   "fieldtype": "Datetime",
+   "label": "Ended",
+   "read_only": 1
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Int",
+   "label": "Seconds talked",
+   "read_only": 1
+  },
+  {
+   "fieldname": "column_break_wc2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "answered_by",
+   "fieldtype": "Link",
+   "label": "Answered by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "ring_recipients",
+   "fieldtype": "Small Text",
+   "label": "Rang",
+   "read_only": 1,
+   "description": "The people the call rang, in order."
+  },
+  {
+   "fieldname": "started_by",
+   "fieldtype": "Link",
+   "label": "Started by",
+   "options": "User",
+   "read_only": 1,
+   "description": "For an outgoing call: the person who placed it."
+  },
+  {
+   "fieldname": "recording_section",
+   "fieldtype": "Section Break",
+   "label": "Recording"
+  },
+  {
+   "fieldname": "recording_status",
+   "fieldtype": "Select",
+   "label": "Recording",
+   "options": "\nRequested\nWaiting\nDownloaded\nFailed\nNot recorded",
+   "read_only": 1
+  },
+  {
+   "fieldname": "recording_file",
+   "fieldtype": "Attach",
+   "label": "Recording file",
+   "read_only": 1,
+   "description": "Private. Meta keeps the audio for 7 days only, so it is downloaded as soon as it is ready."
+  },
+  {
+   "fieldname": "recording_error",
+   "fieldtype": "Small Text",
+   "label": "Recording problem",
+   "read_only": 1
+  },
+  {
+   "fieldname": "log_section",
+   "fieldtype": "Section Break",
+   "label": "Technical"
+  },
+  {
+   "fieldname": "call_log",
+   "fieldtype": "Data",
+   "label": "ERP Call Log",
+   "read_only": 1,
+   "description": "Set by the ERP's call-log link (splinh) when installed."
+  },
+  {
+   "fieldname": "meta_status",
+   "fieldtype": "Data",
+   "label": "Meta status",
+   "read_only": 1
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Small Text",
+   "label": "Last problem",
+   "read_only": 1
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-11-18 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Waba",
+ "name": "Waba Call",
+ "owner": "Administrator",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0,
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "delete": 1
+  },
+  {
+   "role": "Waba Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Waba Supervisor",
+   "read": 1,
+   "report": 1
+  },
+  {
+   "role": "Waba Agent",
+   "read": 1
+  }
+ ],
+ "autoname": "hash",
+ "naming_rule": "Random",
+ "title_field": "caller_phone"
+}

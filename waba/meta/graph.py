@@ -316,3 +316,33 @@ def verify_code(token, phone_number_id, code, version=None, http=None):
 def register_number(token, phone_number_id, pin, version=None, http=None):
 	"""Register the number for the Cloud API with a 6-digit two-step PIN. The PIN is needed later to change or delete the number."""
 	return call(token, "POST", f"{phone_number_id}/register", version, json={"messaging_product": "whatsapp", "pin": pin}, http=http)
+
+
+# ------------------------------------------------------------------------------------------------ voice calls (Business Calling API)
+# Signalling is HTTPS: POST /<phone number id>/calls with an action. The field names follow Meta's reference as read on 18 Nov 2026
+# and are UNVERIFIED against a live call.
+
+
+def call_action(token, phone_number_id, action, call_id=None, sdp=None, sdp_type=None, to=None, recording=None, version=None, http=None):
+	"""One call action: connect (place an outgoing call: `to` and an offer), pre_accept / accept (an incoming call: an answer),
+	reject, terminate. Returns Meta's answer (success true, or for connect the call id)."""
+	payload = {"messaging_product": "whatsapp", "action": action}
+	if call_id:
+		payload["call_id"] = call_id
+	if to:
+		payload["to"] = to
+	if sdp:
+		payload["session"] = {"sdp_type": sdp_type or ("offer" if action == "connect" else "answer"), "sdp": sdp}
+	if recording:
+		payload["recording"] = recording
+	return call(token, "POST", f"{phone_number_id}/calls", version, json=payload, http=http)
+
+
+def calling_settings(token, phone_number_id, version=None, http=None):
+	"""What Meta has set for calling on a number (status, call icon, callback permission, permission mode)."""
+	return call(token, "GET", f"{phone_number_id}/settings", version, http=http)
+
+
+def call_permissions(token, phone_number_id, user_wa_id, version=None, http=None):
+	"""Whether we may call this customer now (permission status, start_call / send_call_permission_request allowed, usage limits)."""
+	return call(token, "GET", f"{phone_number_id}/call_permissions", version, params={"user_wa_id": str(user_wa_id).lstrip("+")}, http=http)

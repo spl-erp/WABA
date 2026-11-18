@@ -18,12 +18,13 @@ from frappe.utils import now_datetime
 from werkzeug.wrappers import Response
 
 from waba.rules import signature, template_events, webhook
+from waba.rules import calls as calls_rules
 from waba.rules import coexistence as coexistence_rules
 
 MAX_BODY_BYTES = 1_000_000
 
 # Meta fields a delivery may carry that this ERP acts on; anything else is stored as received and the event is marked Ignored.
-HANDLED_FIELDS = ("messages", coexistence_rules.ECHO_FIELD, coexistence_rules.ACCOUNT_FIELD, *template_events.FIELDS)
+HANDLED_FIELDS = ("messages", coexistence_rules.ECHO_FIELD, coexistence_rules.ACCOUNT_FIELD, calls_rules.CALLS_FIELD, *template_events.FIELDS)
 
 
 def _text(status, text=""):
@@ -142,10 +143,11 @@ def process_event(event_name):
 			notes += _store_echo_changes(payload, account, doc.name)
 			status_notes, waiting = _apply_status_changes(payload)
 			notes += status_notes
-			from waba import coexistence, template_events
+			from waba import calls, coexistence, template_events
 
 			notes += template_events.apply_changes(payload, account)
 			notes += coexistence.apply_account_updates(payload, account)
+			notes += calls.handle_changes(payload, account, doc.name)
 			unhandled = [f for f in summary["fields"] if f not in HANDLED_FIELDS]
 			if unhandled:
 				notes.append("Not handled yet, kept as received: " + ", ".join(unhandled) + ".")

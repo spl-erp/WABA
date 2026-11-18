@@ -282,6 +282,8 @@ scheduler_events = {
 	"cron": {
 		"* * * * *": [
 			"waba.campaign_engine.tick",
+			"waba.calls.expire_stale",
+			"waba.calls.retry_recordings",
 		],
 		"*/2 * * * *": [
 			"waba.api.webhook.retry_waiting",
@@ -310,6 +312,7 @@ permission_query_conditions = {
 	"Waba Conversation": "waba.permissions.conversation_query_conditions",
 	"Waba Message": "waba.permissions.message_query_conditions",
 	"Waba Note": "waba.permissions.note_query_conditions",
+	"Waba Call": "waba.permissions.call_query_conditions",
 	"Waba Quick Reply": "waba.permissions.quick_reply_query_conditions",
 	"Waba Recipient Set": "waba.permissions.recipient_set_query_conditions",
 	"Waba Recipient Set Member": "waba.permissions.recipient_set_member_query_conditions",
@@ -322,6 +325,7 @@ has_permission = {
 	"Waba Conversation": "waba.permissions.conversation_has_permission",
 	"Waba Message": "waba.permissions.message_has_permission",
 	"Waba Note": "waba.permissions.note_has_permission",
+	"Waba Call": "waba.permissions.call_has_permission",
 	"Waba Recipient Set": "waba.permissions.recipient_set_has_permission",
 	"Waba Recipient Set Member": "waba.permissions.recipient_set_member_has_permission",
 	"Waba Campaign": "waba.permissions.campaign_has_permission",

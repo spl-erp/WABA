@@ -15,7 +15,7 @@ WARN = "warning"
 INFO = "info"
 
 ROLE_FOR = {v.AGENT: "Agent", v.LEAD: "Supervisor"}
-SETTINGS = ("max_open", "rep_code", "languages", "may_send_templates")
+SETTINGS = ("max_open", "rep_code", "languages", "may_send_templates", "may_take_calls", "may_make_calls")
 
 
 def number_teams(team_numbers):
@@ -39,10 +39,10 @@ def effective_team(team, parents, team_numbers):
 
 
 def derive_agents(number, *, parents, members, team_numbers, settings=None, existing=None):
-	"""The Agent Access rows `number` should have: [{user, role, available, max_open, rep_code, languages, may_send_templates}].
+	"""The Agent Access rows `number` should have: [{user, role, available, max_open, rep_code, languages, may_send_templates, may_take_calls, may_make_calls}].
 
 	members   [(team, user, role)]
-	settings  {user: {max_open, rep_code, languages, may_send_templates}} from the team members
+	settings  {user: {max_open, rep_code, languages, may_send_templates, may_take_calls, may_make_calls}} from the team members
 	existing  {user: available} the runtime flags to keep (a new person is available)
 	"""
 	settings, existing = settings or {}, existing or {}
@@ -63,6 +63,8 @@ def derive_agents(number, *, parents, members, team_numbers, settings=None, exis
 			"rep_code": (extra.get("rep_code") or "").strip(),
 			"languages": (extra.get("languages") or "").strip(),
 			"may_send_templates": 1 if extra.get("may_send_templates", 1) else 0,
+			"may_take_calls": 1 if extra.get("may_take_calls") else 0,
+			"may_make_calls": 1 if extra.get("may_make_calls") else 0,
 		}
 	return sorted(rows.values(), key=lambda r: (r["role"] != "Supervisor", r["user"]))
 

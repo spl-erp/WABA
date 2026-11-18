@@ -46,7 +46,13 @@
   "bots_enabled",
   "bot_extra_blocks",
   "mobile_section",
-  "mobile_inbox_enabled"
+  "mobile_inbox_enabled",
+  "calls_section",
+  "calls_enabled",
+  "call_ring_mode",
+  "call_ring_seconds",
+  "call_record_language",
+  "call_listen_only"
  ],
  "fields": [
   {
@@ -306,12 +312,53 @@
    "label": "Phone inbox (Call Tracker app)",
    "default": "0",
    "description": "Off for now. When it is on, a phone signed in to the Call Tracker app can use the team inbox: the same chats, replies and rules as the desktop inbox, for people who hold a Waba role. While it is off the phone cannot call any inbox method."
+  },
+  {
+   "fieldname": "calls_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp calls"
+  },
+  {
+   "fieldname": "calls_enabled",
+   "fieldtype": "Check",
+   "label": "WhatsApp calls",
+   "default": "0",
+   "description": "Off for now. When on, a customer's WhatsApp call to a number rings in the browser of the people below, outgoing calls become possible for people marked as callers, and every call is recorded with Meta's spoken announcement. While off, calls are only logged: nothing rings. Meta's call button on the number is controlled at Meta, not here."
+  },
+  {
+   "fieldname": "call_ring_mode",
+   "fieldtype": "Select",
+   "label": "Who rings",
+   "options": "Assigned agent and Team Leads\nAssigned agent only\nEvery available call-taker\nTeam Leads only",
+   "default": "Assigned agent and Team Leads",
+   "description": "Assigned agent and Team Leads: the person the chat is assigned to (if they take calls) and the Team Leads over the number ring together. Every available call-taker: everyone marked 'May take WhatsApp calls' who is Available, plus the Team Leads. The first person to accept takes the call and the others stop ringing."
+  },
+  {
+   "fieldname": "call_ring_seconds",
+   "fieldtype": "Int",
+   "label": "Ring for (seconds)",
+   "default": "30",
+   "description": "How long a call rings before it counts as missed. Meta gives a business about 30 to 60 seconds."
+  },
+  {
+   "fieldname": "call_record_language",
+   "fieldtype": "Data",
+   "label": "Recording announcement language",
+   "default": "en_US",
+   "description": "The language of the spoken notice Meta plays to both people before a call is recorded (a WhatsApp language code, for example en_US or hi)."
+  },
+  {
+   "fieldname": "call_listen_only",
+   "fieldtype": "Check",
+   "label": "Allow calls without a microphone (listen only)",
+   "default": "1",
+   "description": "On: a person whose computer has no microphone is offered to place or take a call anyway and only listen. The customer hears silence. Off: a call needs a microphone."
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-11-14 12:00:00.000000",
+ "modified": "2026-11-19 14:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Settings",

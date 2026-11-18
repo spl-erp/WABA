@@ -35,7 +35,11 @@
   "last_message_preview",
   "technical_section",
   "conversation_key",
-  "last_campaign"
+  "last_campaign",
+  "calls_section",
+  "call_permission",
+  "call_permission_until",
+  "call_permission_asked_at"
  ],
  "fields": [
   {
@@ -256,6 +260,34 @@
    "label": "Last campaign",
    "options": "Waba Campaign",
    "read_only": 1
+  },
+  {
+   "fieldname": "calls_section",
+   "fieldtype": "Section Break",
+   "label": "WhatsApp calls"
+  },
+  {
+   "fieldname": "call_permission",
+   "fieldtype": "Select",
+   "label": "Customer allows calls",
+   "options": "\nNone\nTemporary\nPermanent\nDeclined",
+   "read_only": 1,
+   "description": "From the customer's reply to a call request or from their own call. Meta lets a business call only a customer who allowed it."
+  },
+  {
+   "fieldname": "call_permission_until",
+   "fieldtype": "Datetime",
+   "label": "Allowed until",
+   "read_only": 1,
+   "description": "A temporary permission lasts 7 days."
+  },
+  {
+   "fieldname": "call_permission_asked_at",
+   "fieldtype": "Small Text",
+   "label": "Requests sent (times)",
+   "read_only": 1,
+   "hidden": 1,
+   "description": "When we asked this customer, newest last: Meta allows one request a day and two a week."
   }
  ],
  "index_web_pages_for_search": 1,
@@ -265,7 +297,7 @@
    "link_fieldname": "conversation"
   }
  ],
- "modified": "2026-11-05 12:00:00.000000",
+ "modified": "2026-11-18 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Conversation",

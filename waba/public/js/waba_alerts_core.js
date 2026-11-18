@@ -199,6 +199,14 @@
 		root.document.addEventListener("visibilitychange", () => !root.document.hidden && refreshUnread());
 		schedulePaint();
 
+		// the browser phone for WhatsApp calls, only for people the server flagged (waba.boot.call_flags)
+		const calls = root.frappe.boot && root.frappe.boot.waba_calls;
+		if (calls && calls.enabled && (calls.make || calls.take)) {
+			root.frappe.call({ method: "waba.api.inbox.assets_version", silent: true }).then(function (r) {
+				root.$.ajax({ url: "/assets/waba/js/waba_call_phone.js?v=" + encodeURIComponent((r && r.message) || "0"), dataType: "script", cache: true });
+			});
+		}
+
 		root.frappe.realtime.on("waba_inbox", () => refreshUnread()); // any change (new message, read, hand-over) can change the count
 		root.frappe.realtime.on("waba_inbox", (data) => {
 			const plan = decide({ kind: data && data.kind, conversation: data && data.conversation, hidden: root.document.hidden, inbox: root.waba_inbox_state || null, prefs: load() });

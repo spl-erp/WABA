@@ -11,7 +11,9 @@
   "rep_code",
   "languages",
   "may_send_templates",
-  "may_send_campaigns"
+  "may_send_campaigns",
+  "may_take_calls",
+  "may_make_calls"
  ],
  "fields": [
   {
@@ -70,11 +72,25 @@
    "fieldtype": "Check",
    "label": "May send campaigns",
    "default": "0"
+  },
+  {
+   "fieldname": "may_take_calls",
+   "fieldtype": "Check",
+   "label": "May take WhatsApp calls",
+   "default": "0",
+   "description": "This person's browser rings when a customer calls this number (when Calls are switched on in Waba Settings)."
+  },
+  {
+   "fieldname": "may_make_calls",
+   "fieldtype": "Check",
+   "label": "May place WhatsApp calls",
+   "default": "0",
+   "description": "Shows the Call button in the chat for this person. Each customer must have allowed calls first, and outgoing calls are billed per minute."
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-28 12:00:00.000000",
+ "modified": "2026-11-18 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Waba",
  "name": "Waba Agent Access",

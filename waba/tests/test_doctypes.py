@@ -24,7 +24,7 @@ EXPECTED = {
 	"Waba Team", "Waba Team Number", "Waba Team Member", "Waba Note", "Waba Quick Reply", "Waba Shared File", "Waba Template Variable",
 	"Waba Settings", "Waba Notification Rule", "Waba Notification Log", "Waba Reminder", "Waba Template Button", "Waba Privacy Log",
 	"Waba Recipient Set", "Waba Recipient Set Member", "Waba Campaign", "Waba Campaign Recipient",
-	"Waba Bot", "Waba Bot Session", "Waba Bot Log",
+	"Waba Bot", "Waba Bot Session", "Waba Bot Log", "Waba Call",
 }
 CHILD_TABLES = ("Waba Agent Access", "Waba Routing Rule", "Waba Team Number", "Waba Team Member", "Waba Template Variable", "Waba Template Button")
 SECRET_FIELDS = {"Waba Portfolio": {"access_token"}, "Waba Meta App": {"app_secret", "verify_token"}}

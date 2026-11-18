@@ -169,3 +169,27 @@ def number_query_conditions(user=None):
 def number_has_permission(doc, user=None, permission_type=None):
 	names = teams.number_names(user or frappe.session.user)
 	return names is None or doc.get("name") in names
+
+
+def call_query_conditions(user=None):
+	"""Waba Call: the calls of a conversation the person may see, and (for a call from a number nobody knows, which has no conversation) the
+	calls of the numbers they oversee as a Team Lead."""
+	scope = teams.user_scope(user or frappe.session.user)
+	condition = _conversation_condition(scope)
+	if not condition:
+		return ""
+	parts = [f"`tabWaba Call`.`conversation` in (select `name` from `tabWaba Conversation` where {condition})"]
+	if scope.lead_numbers:
+		parts.append(
+			"(ifnull(`tabWaba Call`.`conversation`, '') = '' and `tabWaba Call`.`waba_number` in ({}))".format(", ".join(frappe.db.escape(n) for n in sorted(scope.lead_numbers)))
+		)
+	return "(" + " or ".join(parts) + ")"
+
+
+def call_has_permission(doc, user=None, permission_type=None):
+	scope = teams.user_scope(user or frappe.session.user)
+	if scope.everything:
+		return True
+	if doc.get("conversation"):
+		return _has_through_conversation(doc, user)
+	return doc.get("waba_number") in scope.lead_numbers

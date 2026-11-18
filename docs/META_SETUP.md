@@ -104,3 +104,16 @@ Only for a number Meta has connected to the API while keeping it in the WhatsApp
 2. On the Waba Number tick **Also used in the WhatsApp Business app**. Never use Register number, Send a code or Enter the code on it: that would cut the phone app link (the buttons are switched off).
 3. The phone app must be opened at least every 14 days, or Meta disconnects the link; Waba then shows the link as Disconnected and alerts the Team Leads.
 4. Meta's throughput for such a number is 20 messages per second (not 80). Messages typed in the phone app are free and do not open or change the 24-hour window.
+
+
+## WhatsApp calls (Business Calling API) - number 55
+Calls are handled in the browser (no phone server). Needs a Cloud API number that is not also in the WhatsApp Business app (a coexistence number cannot take calls), a messaging limit of 2,000 or more and a credit line.
+1. In the Meta app's WhatsApp webhook settings subscribe the **calls** field as well as `messages`.
+2. Calling must be enabled on the number at Meta (it already is on number 55; the call button is then visible to customers). Meta's call hours are not set by Waba.
+3. In Waba Settings > WhatsApp calls tick **WhatsApp calls** only when the browser phone is ready (stage 2); until then calls are only logged and the Team Leads are told about missed calls. Choose who rings.
+4. On the Number's agent rows tick **May take WhatsApp calls** for the people who answer (and later **May place WhatsApp calls**).
+5. Every call is recorded with Meta's spoken announcement to both people; Meta keeps the audio for 7 days, Waba downloads it as soon as it is ready.
+6. Customers calling you is free; calling a customer is billed per minute and needs the customer's permission first.
+
+7. A customer's call shows a ring box (sound, Accept / Decline) in the browser of the people who ring; an unanswered call shows a 'Missed WhatsApp call' notice with an Open button. Browsers play sound only after you have clicked once in the page.
+8. No microphone on a computer: Waba Settings > **Allow calls without a microphone (listen only)** (on by default) lets that person take or place a call and only listen.

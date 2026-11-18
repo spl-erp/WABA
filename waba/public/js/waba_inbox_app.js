@@ -640,16 +640,24 @@ class WabaThread {
 			<div class="waba-th-actions">
 				${c.can_transfer ? `<button class="waba-iconbtn waba-transfer-btn" title="${__("Transfer: hand this conversation to another agent")}" aria-label="${__("Transfer")}">${WabaLib.icon("transfer", 20)}</button>
 				<button class="waba-iconbtn waba-status-btn" title="${done ? __("Reopen") : __("Mark done")}" aria-label="${done ? __("Reopen") : __("Mark done")}">${WabaLib.icon(done ? "undo" : "done", 20)}</button>` : ""}
+				${this.can_call_here() ? `<button class="waba-iconbtn waba-call-btn" title="${__("Call on WhatsApp")}" aria-label="${__("Call on WhatsApp")}">${WabaLib.icon("phone", 20)}</button>` : ""}
 				<button class="waba-iconbtn waba-open-record" title="${__("Open Record")}" aria-label="${__("Open Record")}">${WabaLib.icon("external", 20)}</button>
 				<button class="waba-iconbtn waba-template-btn" title="${__("Send Template")}" aria-label="${__("Send Template")}">${WabaLib.icon("send", 20)}</button>
 				<button class="waba-iconbtn waba-more-btn" title="${__("More actions")}" aria-label="${__("More actions")}">${WabaLib.icon("more", 20)}</button>
 			</div>`);
 		this.$head.find(".waba-back").on("click", () => this.handlers.onBack());
 		this.$head.find(".waba-open-record").on("click", () => this.handlers.onOpenRecord());
+		this.$head.find(".waba-call-btn").on("click", () => this.handlers.onCall());
 		this.$head.find(".waba-template-btn").on("click", () => this.handlers.onTemplate());
 		this.$head.find(".waba-transfer-btn").on("click", () => this.handlers.onTransfer());
 		this.$head.find(".waba-status-btn").on("click", () => this.handlers.onStatus(c.status === "Done" ? "Open" : "Done"));
 		this.$head.find(".waba-more-btn").on("click", (ev) => this.handlers.onMore($(ev.currentTarget)));
+	}
+
+	/** The Call button shows for people the server marked as callers while calling is on (frappe.boot.waba_calls, decided on the server). */
+	can_call_here() {
+		const flags = (frappe.boot && frappe.boot.waba_calls) || {};
+		return !!(flags.enabled && flags.make);
 	}
 
 	render_banner() {
@@ -1046,6 +1054,7 @@ class WabaInbox {
 			draftsFor: (name) => (this.drafts[name] = this.drafts[name] || { reply: "", note: "" }),
 			onEarlier: (before) => this.load_earlier(before),
 			onOpenRecord: () => this.open_record(),
+			onCall: () => this.call_customer(),
 			onMore: ($anchor) => this.more_menu($anchor),
 		};
 	}
@@ -1208,6 +1217,14 @@ class WabaInbox {
 		if (!c) return;
 		if (c.party_doctype && c.party) frappe.set_route("Form", c.party_doctype, c.party);
 		else frappe.set_route("Form", "Waba Conversation", c.name);
+	}
+
+	/** Call the customer of this conversation on WhatsApp (the browser phone checks everything with the server and Meta first). */
+	call_customer() {
+		const c = this.conversation();
+		if (!c) return;
+		if (!window.WabaPhone) return frappe.msgprint(__("The phone is still loading. Try again in a moment."));
+		window.WabaPhone.start(c.name, c.customer_label || c.profile_name, c.customer_phone);
 	}
 
 	more_menu($anchor) {
